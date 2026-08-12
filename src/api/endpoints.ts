@@ -1,4 +1,4 @@
-import { apiRequest } from "./client";
+import { apiRequest, apiUpload, imageFormFile } from "./client";
 import type {
   AuthResult,
   AuthSession,
@@ -93,6 +93,11 @@ export const usersApi = {
       auth: true,
       body,
     });
+  },
+  uploadAvatar(uri: string) {
+    const form = new FormData();
+    form.append("avatar", imageFormFile(uri, "avatar.jpg") as unknown as Blob);
+    return apiUpload<PublicUser>("/users/me/avatar", form, { auth: true });
   },
 };
 

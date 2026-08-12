@@ -243,6 +243,8 @@ export type FavouriteRow = {
   };
 };
 
+export type EnquiryStatus = "new" | "responded" | "closed";
+
 export type Enquiry = {
   id: string;
   vendorId: string;
@@ -250,9 +252,10 @@ export type Enquiry = {
   name: string;
   phone: string;
   message: string | null;
-  status: string;
+  status: EnquiryStatus;
   createdAt: string;
   updatedAt: string;
+  vendor?: { id: string; slug: string; businessName: string };
 };
 
 export type BookingStatus =
@@ -277,6 +280,7 @@ export type Booking = {
   reminderSentAt: string | null;
   createdAt: string;
   updatedAt: string;
+  vendor?: { id: string; slug: string; businessName: string };
 };
 
 export type AvailabilitySlot = {

@@ -1,7 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 import type { ApiEnvelope, ApiErrorBody } from "./types";
 
-const DEFAULT_API_BASE_URL = "http://192.168.1.76:4000/api/v1";
+const DEFAULT_API_BASE_URL = "http://13.204.231.151/api/v1";
 const REFRESH_TOKEN_KEY = "hd_customer_refresh_token";
 const REQUEST_TIMEOUT_MS = 20_000;
 const MAX_TRANSIENT_RETRIES = 3;
@@ -168,6 +168,113 @@ export async function apiRequest<T>(
         const refreshed = await tryRefresh();
         if (refreshed) {
           return apiRequest<T>(path, { ...options, skipRefresh: true });
+        }
+        throw new ApiError(401, envelope.error);
+      }
+
+      if (!envelope || typeof envelope.success !== "boolean") {
+        if (isTransientStatus(response.status) && attempt < MAX_TRANSIENT_RETRIES) {
+          attempt += 1;
+          await sleep(200 * 2 ** attempt + Math.random() * 100);
+          continue;
+        }
+        throw new ApiError(response.status, {
+          code: "INTERNAL",
+          message: `Unexpected response (${response.status})`,
+        });
+      }
+
+      if (!envelope.success) {
+        if (isTransientStatus(response.status) && attempt < MAX_TRANSIENT_RETRIES) {
+          attempt += 1;
+          const retryAfter = Number(response.headers.get("Retry-After"));
+          await sleep(
+            Number.isFinite(retryAfter) && retryAfter > 0
+              ? retryAfter * 1000
+              : 200 * 2 ** attempt + Math.random() * 100,
+          );
+          continue;
+        }
+        throw new ApiError(response.status, envelope.error);
+      }
+
+      return envelope.data;
+    } catch (err) {
+      if (err instanceof ApiError) throw err;
+      if (attempt < MAX_TRANSIENT_RETRIES) {
+        attempt += 1;
+        await sleep(200 * 2 ** attempt + Math.random() * 100);
+        continue;
+      }
+      throw new ApiError(0, {
+        code: "NETWORK",
+        message: err instanceof Error ? err.message : "Network request failed",
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+}
+
+type UploadOptions = {
+  auth?: boolean;
+  skipRefresh?: boolean;
+};
+
+/** React Native multipart file part for FormData.append. */
+export function imageFormFile(uri: string, filename = "upload.jpg") {
+  const lower = uri.split("?")[0].toLowerCase();
+  let type = "image/jpeg";
+  if (lower.endsWith(".png")) type = "image/png";
+  else if (lower.endsWith(".webp")) type = "image/webp";
+  return { uri, name: filename, type };
+}
+
+export async function apiUpload<T>(
+  path: string,
+  formData: FormData,
+  options: UploadOptions = {},
+): Promise<T> {
+  const { auth = false, skipRefresh = false } = options;
+
+  let attempt = 0;
+  while (true) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+    try {
+      const headers: Record<string, string> = {
+        Accept: "application/json",
+      };
+      if (auth && accessToken) {
+        headers.Authorization = `Bearer ${accessToken}`;
+      }
+
+      const response = await fetch(buildUrl(path), {
+        method: "POST",
+        headers,
+        body: formData,
+        signal: controller.signal,
+      });
+
+      let envelope: ApiEnvelope<T> | null = null;
+      try {
+        envelope = (await response.json()) as ApiEnvelope<T>;
+      } catch {
+        envelope = null;
+      }
+
+      if (
+        response.status === 401 &&
+        auth &&
+        !skipRefresh &&
+        envelope &&
+        !envelope.success &&
+        envelope.error.code === "UNAUTHENTICATED"
+      ) {
+        const refreshed = await tryRefresh();
+        if (refreshed) {
+          return apiUpload<T>(path, formData, { ...options, skipRefresh: true });
         }
         throw new ApiError(401, envelope.error);
       }
