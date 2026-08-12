@@ -1,7 +1,8 @@
 import { router } from "expo-router";
 import { MonitorSmartphone, Shield } from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
-import { Alert, FlatList, Pressable, Text, View } from "react-native";
+import { Alert, FlatList, Text, View } from "react-native";
+import { AccentCard, SecondaryAction } from "../../components/customer/AccentCard";
 import { Button, ScreenState } from "../../components/ui";
 import { ApiError } from "../../src/api/client";
 import { authApi } from "../../src/api/endpoints";
@@ -132,39 +133,32 @@ export default function SessionsScreen() {
           </View>
         }
         renderItem={({ item }) => (
-          <View className="mb-3 rounded-2xl border border-ink-100 bg-white px-4 py-3">
-            <View className="flex-row items-start gap-3">
-              <MonitorSmartphone size={20} color="#2563EB" strokeWidth={2} />
-              <View className="flex-1">
-                <Text className="font-semibold text-ink-900">
-                  {item.deviceInfo?.trim() || "Unknown device"}
-                  {item.isCurrent ? " · This device" : ""}
-                </Text>
-                {item.ip ? (
-                  <Text className="mt-0.5 text-xs text-ink-500">IP {item.ip}</Text>
-                ) : null}
-                <Text className="mt-1 text-xs text-ink-500">
-                  Started {formatSessionWhen(item.createdAt)}
-                </Text>
-                <Text className="text-xs text-ink-400">
-                  Expires {formatSessionWhen(item.expiresAt)}
-                </Text>
-              </View>
+          <AccentCard className="mb-3">
+            <Text className="font-semibold text-ink-900">
+              {item.deviceInfo?.trim() || "Unknown device"}
+              {item.isCurrent ? " · This device" : ""}
+            </Text>
+            {item.ip ? (
+              <Text className="mt-0.5 text-xs text-ink-500">IP {item.ip}</Text>
+            ) : null}
+            <Text className="mt-1 text-xs text-ink-500">
+              Started {formatSessionWhen(item.createdAt)}
+            </Text>
+            <Text className="text-xs text-ink-400">Expires {formatSessionWhen(item.expiresAt)}</Text>
+            <View className="mt-3">
+              <SecondaryAction
+                label={
+                  busyId === item.id
+                    ? "Revoking…"
+                    : item.isCurrent
+                      ? "Sign out this device"
+                      : "Revoke"
+                }
+                disabled={busyId === item.id}
+                onPress={() => void onRevoke(item)}
+              />
             </View>
-            <Pressable
-              className="mt-3 self-start py-1"
-              disabled={busyId === item.id}
-              onPress={() => void onRevoke(item)}
-            >
-              <Text className="text-sm font-medium text-red-600">
-                {busyId === item.id
-                  ? "Revoking…"
-                  : item.isCurrent
-                    ? "Sign out this device"
-                    : "Revoke"}
-              </Text>
-            </Pressable>
-          </View>
+          </AccentCard>
         )}
       />
     </ScreenState>

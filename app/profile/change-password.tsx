@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { Text } from "react-native";
+import { Text, View } from "react-native";
 import { Field } from "../../components/Field";
 import { KeyboardForm } from "../../components/KeyboardForm";
 import { Button } from "../../components/ui";
@@ -34,23 +34,30 @@ export default function ChangePasswordScreen() {
   }
 
   return (
-    <KeyboardForm withHeader className="flex-1 bg-white" contentContainerClassName="px-5 py-4">
-      <Field
-        label="Current password"
-        value={currentPassword}
-        onChangeText={setCurrentPassword}
-        secureTextEntry
-        error={fieldErrors.currentPassword}
-      />
-      <Field
-        label="New password"
-        value={newPassword}
-        onChangeText={setNewPassword}
-        secureTextEntry
-        error={fieldErrors.newPassword}
-      />
-      {error ? <Text className="mb-2 text-sm text-red-600">{error}</Text> : null}
-      <Button label="Update password" onPress={() => void save()} loading={loading} />
+    <KeyboardForm withHeader className="flex-1 bg-ink-50" contentContainerClassName="px-5 py-4">
+      <View className="overflow-hidden rounded-3xl border border-ink-100 bg-white shadow-sm">
+        <View className="px-4 py-4">
+          <Text className="mb-4 text-sm text-ink-500">
+            Choose a strong password you haven&apos;t used elsewhere.
+          </Text>
+          <Field
+            label="Current password"
+            value={currentPassword}
+            onChangeText={setCurrentPassword}
+            secureTextEntry
+            error={fieldErrors.currentPassword}
+          />
+          <Field
+            label="New password"
+            value={newPassword}
+            onChangeText={setNewPassword}
+            secureTextEntry
+            error={fieldErrors.newPassword}
+          />
+          {error ? <Text className="mb-2 text-sm text-red-600">{error}</Text> : null}
+          <Button label="Update password" onPress={() => void save()} loading={loading} />
+        </View>
+      </View>
     </KeyboardForm>
   );
 }
