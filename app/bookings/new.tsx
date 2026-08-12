@@ -83,9 +83,11 @@ export default function NewBookingScreen() {
       contentContainerClassName="px-5 py-4 pb-10"
     >
       <Text className="text-lg font-semibold text-ink-900">{name ?? "Book appointment"}</Text>
-      <View className="mt-4 rounded-2xl border border-ink-100 bg-white px-4 py-4">
-        <Field label="Date (YYYY-MM-DD)" value={date} onChangeText={setDate} />
-        <Button label="Load slots" variant="secondary" onPress={() => void loadSlots()} />
+      <View className="mt-4 overflow-hidden rounded-3xl border border-ink-100 bg-white shadow-sm">
+        <View className="px-4 py-4">
+          <Field label="Date (YYYY-MM-DD)" value={date} onChangeText={setDate} />
+          <Button label="Load slots" variant="secondary" onPress={() => void loadSlots()} />
+        </View>
       </View>
 
       <ScreenState
@@ -123,14 +125,16 @@ export default function NewBookingScreen() {
         </View>
       </ScreenState>
 
-      <View className="mt-4 rounded-2xl border border-ink-100 bg-white px-4 py-4">
-        <Field label="Notes (optional)" value={notes} onChangeText={setNotes} autoCapitalize="sentences" />
-        <Button
-          label="Request booking"
-          disabled={!selected}
-          loading={submitting}
-          onPress={() => void submit()}
-        />
+      <View className="mt-4 overflow-hidden rounded-3xl border border-ink-100 bg-white shadow-sm">
+        <View className="px-4 py-4">
+          <Field label="Notes (optional)" value={notes} onChangeText={setNotes} autoCapitalize="sentences" />
+          <Button
+            label="Request booking"
+            disabled={!selected}
+            loading={submitting}
+            onPress={() => void submit()}
+          />
+        </View>
       </View>
     </KeyboardForm>
   );
