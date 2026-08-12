@@ -39,6 +39,7 @@ export default function RootLayout() {
         <Stack.Screen name="profile/edit" options={pushed("Edit profile")} />
         <Stack.Screen name="profile/change-password" options={pushed("Change password")} />
         <Stack.Screen name="profile/sessions" options={pushed("Active sessions")} />
+        <Stack.Screen name="support" options={pushed("Support")} />
         <Stack.Screen name="notifications" options={pushed("Notifications")} />
       </Stack>
     </AuthProvider>
