@@ -4,15 +4,18 @@ import {
   ExternalLink,
   Heart,
   MapPin,
-  MessageCircle,
   Phone,
   Star,
 } from "lucide-react-native";
+import {
+  LinkIconButton,
+  SOCIAL_BRAND_ICONS,
+  WhatsAppIcon,
+} from "../../components/customer/BrandIcons";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   BackHandler,
   Linking,
-  Modal,
   Pressable,
   ScrollView,
   Text,
@@ -21,16 +24,17 @@ import {
 } from "react-native";
 import { Field } from "../../components/Field";
 import { formatRating } from "../../components/BusinessCard";
-import { KeyboardForm } from "../../components/KeyboardForm";
+import { ReviewEditModal } from "../../components/customer/ReviewEditModal";
+import { SheetModal } from "../../components/customer/SheetModal";
 import { Button, ScreenState } from "../../components/ui";
 import { ApiError } from "../../src/api/client";
 import { customerApi, directoryApi } from "../../src/api/endpoints";
 import type {
+  CustomerReview,
   Product,
   PublicReview,
   ReportReason,
   Vendor,
-  VendorSocialLinks,
 } from "../../src/api/types";
 import { useAuth } from "../../src/auth/AuthProvider";
 
@@ -44,14 +48,6 @@ const REPORT_REASONS: { value: ReportReason; label: string }[] = [
   { value: "other", label: "Other" },
 ];
 
-const SOCIAL_LABELS: { key: keyof VendorSocialLinks; label: string }[] = [
-  { key: "facebook", label: "Facebook" },
-  { key: "instagram", label: "Instagram" },
-  { key: "linkedin", label: "LinkedIn" },
-  { key: "youtube", label: "YouTube" },
-  { key: "twitter", label: "X" },
-];
-
 function formatPriceRange(min: string | null, max: string | null): string | null {
   if (min == null && max == null) return null;
   if (min != null && max != null) return `₹${min} – ₹${max}`;
@@ -63,11 +59,18 @@ function openExternalUrl(url: string) {
   void Linking.openURL(url).catch(() => undefined);
 }
 
+function whatsAppUrl(number: string) {
+  return `https://wa.me/${number.replace(/\D/g, "")}`;
+}
+
 export default function BusinessDetailScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const { isAuthenticated } = useAuth();
   const [vendor, setVendor] = useState<Vendor | null>(null);
   const [reviews, setReviews] = useState<PublicReview[]>([]);
+  const [reviewPage, setReviewPage] = useState(1);
+  const [reviewTotalPages, setReviewTotalPages] = useState(1);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -76,6 +79,7 @@ export default function BusinessDetailScreen() {
   const [enquiryOpen, setEnquiryOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [myReview, setMyReview] = useState<CustomerReview | null>(null);
 
   const load = useCallback(async () => {
     if (!slug) return;
@@ -88,17 +92,25 @@ export default function BusinessDetailScreen() {
       ]);
       setVendor(biz);
       setReviews(rev.items);
+      setReviewPage(1);
+      setReviewTotalPages(rev.totalPages);
       setProducts(prod.items);
 
       if (isAuthenticated) {
         try {
-          const favs = await customerApi.favourites(1, 100);
+          const [favs, mine] = await Promise.all([
+            customerApi.favourites(1, 100),
+            customerApi.listReviews(1, 100),
+          ]);
           setIsSaved(favs.items.some((row) => row.vendor.id === biz.id));
+          setMyReview(mine.items.find((row) => row.vendorId === biz.id) ?? null);
         } catch {
-          // Favourite status is optional chrome — don't fail the page.
+          // Favourite/review status is optional chrome — don't fail the page.
+          setMyReview(null);
         }
       } else {
         setIsSaved(false);
+        setMyReview(null);
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Business not found");
@@ -106,6 +118,21 @@ export default function BusinessDetailScreen() {
       setLoading(false);
     }
   }, [slug, isAuthenticated]);
+
+  async function loadMoreReviews() {
+    if (!slug || reviewPage >= reviewTotalPages || reviewsLoading) return;
+    setReviewsLoading(true);
+    try {
+      const nextPage = reviewPage + 1;
+      const rev = await directoryApi.reviews(slug, nextPage, 10);
+      setReviews((prev) => [...prev, ...rev.items]);
+      setReviewPage(nextPage);
+      setReviewTotalPages(rev.totalPages);
+    } catch {
+    } finally {
+      setReviewsLoading(false);
+    }
+  }
 
   useEffect(() => {
     void load();
@@ -155,14 +182,24 @@ export default function BusinessDetailScreen() {
     }
   }
 
+  function handleWriteReview() {
+    if (!isAuthenticated) {
+      router.push("/(auth)/login");
+      return;
+    }
+    setReviewOpen(true);
+  }
+
   const hero =
     vendor?.coverBannerUrl ?? vendor?.photos?.[0]?.imageUrl ?? null;
   const priceRange = vendor
     ? formatPriceRange(vendor.priceRangeMin ?? null, vendor.priceRangeMax ?? null)
     : null;
   const socialEntries = vendor?.socialLinks
-    ? SOCIAL_LABELS.filter(({ key }) => !!vendor.socialLinks?.[key])
+    ? SOCIAL_BRAND_ICONS.filter(({ key }) => !!vendor.socialLinks?.[key])
     : [];
+  const hasContactLinks =
+    !!vendor?.phone || !!vendor?.whatsappNumber || !!vendor?.googleMapLink || !!vendor?.website;
 
   return (
     <>
@@ -208,7 +245,7 @@ export default function BusinessDetailScreen() {
                   </Text>
                 ) : null}
                 {vendor.hasEmergencyService ? (
-                  <Text className="rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-700">
+                  <Text className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
                     Emergency
                   </Text>
                 ) : null}
@@ -245,6 +282,7 @@ export default function BusinessDetailScreen() {
                   label={isSaved ? "Saved" : "Save"}
                   variant="outline"
                   icon={Heart}
+                  iconFilled={isSaved}
                   loading={favBusy}
                   onPress={() => void toggleFavourite()}
                 />
@@ -258,58 +296,60 @@ export default function BusinessDetailScreen() {
               }}>
                 <Text className="text-sm text-ink-400">Report this business</Text>
               </Pressable>
-              {vendor.phone ? (
-                <Pressable
-                  className="mt-3 flex-row items-center gap-2 py-2"
-                  onPress={() => openExternalUrl(`tel:${vendor.phone}`)}
-                >
-                  <Phone size={16} color="#2563EB" strokeWidth={2} />
-                  <Text className="text-brand-600">Call {vendor.phone}</Text>
-                </Pressable>
-              ) : null}
-              {vendor.whatsappNumber ? (
-                <Pressable
-                  className="flex-row items-center gap-2 py-2"
-                  onPress={() =>
-                    openExternalUrl(
-                      `https://wa.me/${vendor.whatsappNumber!.replace(/\D/g, "")}`,
-                    )
-                  }
-                >
-                  <MessageCircle size={16} color="#2563EB" strokeWidth={2} />
-                  <Text className="text-brand-600">WhatsApp {vendor.whatsappNumber}</Text>
-                </Pressable>
-              ) : null}
-              {vendor.website ? (
-                <Pressable className="flex-row items-center gap-2 py-1" onPress={() => openExternalUrl(vendor.website!)}>
-                  <ExternalLink size={16} color="#2563EB" strokeWidth={2} />
-                  <Text className="flex-1 text-brand-600" numberOfLines={1}>
-                    {vendor.website}
-                  </Text>
-                </Pressable>
-              ) : null}
-              {vendor.googleMapLink ? (
-                <Pressable
-                  className="flex-row items-center gap-2 py-1"
-                  onPress={() => openExternalUrl(vendor.googleMapLink!)}
-                >
-                  <MapPin size={16} color="#2563EB" strokeWidth={2} />
-                  <Text className="text-brand-600">Open in Maps</Text>
-                </Pressable>
+              {hasContactLinks ? (
+                <View className="mt-4 flex-row flex-wrap gap-3">
+                  {vendor.phone ? (
+                    <LinkIconButton
+                      accessibilityLabel={`Call ${vendor.phone}`}
+                      onPress={() => openExternalUrl(`tel:${vendor.phone}`)}
+                    >
+                      <Phone size={20} color="#2563EB" strokeWidth={2} />
+                    </LinkIconButton>
+                  ) : null}
+                  {vendor.whatsappNumber ? (
+                    <LinkIconButton
+                      accessibilityLabel={`WhatsApp ${vendor.whatsappNumber}`}
+                      className="bg-emerald-50"
+                      onPress={() => openExternalUrl(whatsAppUrl(vendor.whatsappNumber!))}
+                    >
+                      <WhatsAppIcon size={22} />
+                    </LinkIconButton>
+                  ) : null}
+                  {vendor.googleMapLink ? (
+                    <LinkIconButton
+                      accessibilityLabel="Open in Maps"
+                      className="bg-rose-50"
+                      onPress={() => openExternalUrl(vendor.googleMapLink!)}
+                    >
+                      <MapPin size={20} color="#E11D48" strokeWidth={2} />
+                    </LinkIconButton>
+                  ) : null}
+                  {vendor.website ? (
+                    <LinkIconButton
+                      accessibilityLabel="Visit website"
+                      onPress={() => openExternalUrl(vendor.website!)}
+                    >
+                      <ExternalLink size={20} color="#2563EB" strokeWidth={2} />
+                    </LinkIconButton>
+                  ) : null}
+                </View>
               ) : null}
             </View>
 
             {socialEntries.length > 0 ? (
               <Section title="Social">
-                {socialEntries.map(({ key, label }) => (
-                  <Pressable
-                    key={key}
-                    className="mb-2 py-1"
-                    onPress={() => openExternalUrl(vendor.socialLinks![key]!)}
-                  >
-                    <Text className="text-sm text-brand-600">{label}</Text>
-                  </Pressable>
-                ))}
+                <View className="flex-row flex-wrap gap-3">
+                  {socialEntries.map(({ key, label, Icon, wrap }) => (
+                    <LinkIconButton
+                      key={key}
+                      accessibilityLabel={label}
+                      className={wrap}
+                      onPress={() => openExternalUrl(vendor.socialLinks![key]!)}
+                    >
+                      <Icon size={22} />
+                    </LinkIconButton>
+                  ))}
+                </View>
               </Section>
             ) : null}
 
@@ -398,8 +438,8 @@ export default function BusinessDetailScreen() {
 
             <Section
               title="Reviews"
-              actionLabel={isAuthenticated ? "Write review" : undefined}
-              onAction={() => setReviewOpen(true)}
+              actionLabel={myReview ? "Edit review" : "Write review"}
+              onAction={handleWriteReview}
             >
               {reviews.length === 0 ? (
                 <Text className="text-sm text-ink-500">No reviews yet</Text>
@@ -416,6 +456,14 @@ export default function BusinessDetailScreen() {
                   </View>
                 ))
               )}
+              {reviewPage < reviewTotalPages ? (
+                <Button
+                  label={reviewsLoading ? "Loading…" : "Load more reviews"}
+                  variant="outline"
+                  disabled={reviewsLoading}
+                  onPress={() => void loadMoreReviews()}
+                />
+              ) : null}
             </Section>
           </ScrollView>
         ) : null}
@@ -428,9 +476,11 @@ export default function BusinessDetailScreen() {
             vendorId={vendor.id}
             onClose={() => setEnquiryOpen(false)}
           />
-          <ReviewModal
+          <ReviewEditModal
             visible={reviewOpen}
             vendorId={vendor.id}
+            businessName={vendor.businessName}
+            existingReview={myReview}
             onClose={() => setReviewOpen(false)}
             onSaved={() => void load()}
           />
@@ -457,16 +507,18 @@ function Section({
   onAction?: () => void;
 }) {
   return (
-    <View className="mx-5 mt-4 rounded-2xl border border-ink-100 bg-white px-4 py-4">
-      <View className="mb-3 flex-row items-center justify-between">
-        <Text className="text-lg font-semibold text-ink-900">{title}</Text>
-        {actionLabel && onAction ? (
-          <Pressable onPress={onAction}>
-            <Text className="text-sm text-brand-600">{actionLabel}</Text>
-          </Pressable>
-        ) : null}
+    <View className="mx-5 mt-4 overflow-hidden rounded-3xl border border-ink-100 bg-white shadow-sm">
+      <View className="px-4 py-4">
+        <View className="mb-3 flex-row items-center justify-between">
+          <Text className="text-lg font-semibold text-ink-900">{title}</Text>
+          {actionLabel && onAction ? (
+            <Pressable onPress={onAction}>
+              <Text className="text-sm text-brand-600">{actionLabel}</Text>
+            </Pressable>
+          ) : null}
+        </View>
+        {children}
       </View>
-      {children}
     </View>
   );
 }
@@ -488,6 +540,16 @@ function EnquiryModal({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    if (!visible) return;
+    setMessage("");
+    setDone(false);
+    setError(null);
+    setFieldErrors({});
+    setName(user?.fullName ?? "");
+    setPhone(user?.phone ?? "");
+  }, [visible, user?.fullName, user?.phone]);
 
   async function submit() {
     setError(null);
@@ -521,106 +583,36 @@ function EnquiryModal({
   }
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <KeyboardForm sheet>
-        <View className="rounded-t-3xl bg-white px-5 pb-10 pt-5">
-          <Text className="mb-4 text-xl font-bold text-ink-900">Send enquiry</Text>
-          {done ? (
+    <SheetModal visible={visible} title="Send enquiry" onClose={onClose}>
+      {done ? (
+        <>
+          <Text className="mb-4 text-ink-700">Enquiry sent.</Text>
+          <Button label="Close" onPress={onClose} />
+        </>
+      ) : (
+        <>
+          {!isAuthenticated ? (
             <>
-              <Text className="mb-4 text-ink-700">Enquiry sent.</Text>
-              <Button label="Close" onPress={onClose} />
+              <Field label="Name" value={name} onChangeText={setName} error={fieldErrors.name} autoCapitalize="words" />
+              <Field label="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" error={fieldErrors.phone} />
             </>
-          ) : (
-            <>
-              {!isAuthenticated ? (
-                <>
-                  <Field label="Name" value={name} onChangeText={setName} error={fieldErrors.name} autoCapitalize="words" />
-                  <Field label="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" error={fieldErrors.phone} />
-                </>
-              ) : null}
-              <Text className="mb-1.5 text-sm font-medium text-ink-700">Message</Text>
-              <TextInput
-                value={message}
-                onChangeText={setMessage}
-                multiline
-                className="mb-3 min-h-[88px] rounded-xl border border-ink-200 px-4 py-3 text-base text-ink-900"
-              />
-              {error ? <Text className="mb-2 text-sm text-red-600">{error}</Text> : null}
-              <Button label="Send" onPress={() => void submit()} loading={loading} />
-              <Button label="Cancel" variant="outline" className="mt-2" onPress={onClose} />
-            </>
-          )}
-        </View>
-      </KeyboardForm>
-    </Modal>
-  );
-}
-
-function ReviewModal({
-  visible,
-  vendorId,
-  onClose,
-  onSaved,
-}: {
-  visible: boolean;
-  vendorId: string;
-  onClose: () => void;
-  onSaved: () => void;
-}) {
-  const [rating, setRating] = useState(5);
-  const [comment, setComment] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  async function submit() {
-    setError(null);
-    setLoading(true);
-    try {
-      await customerApi.upsertReview({
-        vendorId,
-        rating,
-        comment: comment.trim() || undefined,
-      });
-      onSaved();
-      onClose();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not save review");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <KeyboardForm sheet>
-        <View className="rounded-t-3xl bg-white px-5 pb-10 pt-5">
-          <Text className="mb-4 text-xl font-bold text-ink-900">Your review</Text>
-          <View className="mb-4 flex-row gap-2">
-            {[1, 2, 3, 4, 5].map((n) => (
-              <Pressable
-                key={n}
-                onPress={() => setRating(n)}
-                className={`h-10 w-10 items-center justify-center rounded-full ${
-                  rating >= n ? "bg-brand-600" : "bg-ink-100"
-                }`}
-              >
-                <Text className={rating >= n ? "text-white" : "text-ink-500"}>{n}</Text>
-              </Pressable>
-            ))}
-          </View>
+          ) : null}
+          <Text className="mb-1.5 text-sm font-medium text-ink-700">Message</Text>
           <TextInput
-            value={comment}
-            onChangeText={setComment}
-            placeholder="Optional comment"
+            value={message}
+            onChangeText={setMessage}
+            placeholder="What would you like to ask?"
+            placeholderTextColor="#94A3B8"
             multiline
-            className="mb-3 min-h-[80px] rounded-xl border border-ink-200 px-4 py-3 text-base text-ink-900"
+            textAlignVertical="top"
+            className="mb-3 min-h-[100px] rounded-xl border border-ink-200 bg-ink-50 px-4 py-3 text-base text-ink-900"
           />
           {error ? <Text className="mb-2 text-sm text-red-600">{error}</Text> : null}
-          <Button label="Submit" onPress={() => void submit()} loading={loading} />
+          <Button label="Send" onPress={() => void submit()} loading={loading} />
           <Button label="Cancel" variant="outline" className="mt-2" onPress={onClose} />
-        </View>
-      </KeyboardForm>
-    </Modal>
+        </>
+      )}
+    </SheetModal>
   );
 }
 
@@ -657,51 +649,48 @@ function ReportModal({
   }
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <KeyboardForm sheet>
-        <View className="rounded-t-3xl bg-white px-5 pb-10 pt-5">
-          <Text className="mb-4 text-xl font-bold text-ink-900">Report business</Text>
-          {done ? (
-            <>
-              <Text className="mb-4 text-ink-700">Thanks — our team will review this report.</Text>
-              <Button label="Close" onPress={onClose} />
-            </>
-          ) : (
-            <>
-              <Text className="mb-2 text-sm font-medium text-ink-700">Reason</Text>
-              <View className="mb-3 flex-row flex-wrap gap-2">
-                {REPORT_REASONS.map((option) => (
-                  <Pressable
-                    key={option.value}
-                    onPress={() => setReason(option.value)}
-                    className={`rounded-full px-3 py-1.5 ${
-                      reason === option.value ? "bg-brand-600" : "bg-ink-100"
-                    }`}
-                  >
-                    <Text
-                      className={`text-sm ${
-                        reason === option.value ? "font-semibold text-white" : "text-ink-700"
-                      }`}
-                    >
-                      {option.label}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-              <Text className="mb-1.5 text-sm font-medium text-ink-700">Details (optional)</Text>
-              <TextInput
-                value={details}
-                onChangeText={setDetails}
-                multiline
-                className="mb-3 min-h-[80px] rounded-xl border border-ink-200 px-4 py-3 text-base text-ink-900"
-              />
-              {error ? <Text className="mb-2 text-sm text-red-600">{error}</Text> : null}
-              <Button label="Submit report" onPress={() => void submit()} loading={loading} />
-              <Button label="Cancel" variant="outline" className="mt-2" onPress={onClose} />
-            </>
-          )}
-        </View>
-      </KeyboardForm>
-    </Modal>
+    <SheetModal visible={visible} title="Report business" onClose={onClose}>
+      {done ? (
+        <>
+          <Text className="mb-4 text-ink-700">Thanks — our team will review this report.</Text>
+          <Button label="Close" onPress={onClose} />
+        </>
+      ) : (
+        <>
+          <Text className="mb-2 text-sm font-medium text-ink-700">Reason</Text>
+          <View className="mb-3 flex-row flex-wrap gap-2">
+            {REPORT_REASONS.map((option) => (
+              <Pressable
+                key={option.value}
+                onPress={() => setReason(option.value)}
+                className={`rounded-full px-3 py-1.5 ${
+                  reason === option.value ? "bg-brand-600" : "bg-ink-100"
+                }`}
+              >
+                <Text
+                  className={`text-sm ${
+                    reason === option.value ? "font-semibold text-white" : "text-ink-700"
+                  }`}
+                >
+                  {option.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text className="mb-1.5 text-sm font-medium text-ink-700">Details (optional)</Text>
+          <TextInput
+            value={details}
+            onChangeText={setDetails}
+            multiline
+            textAlignVertical="top"
+            placeholderTextColor="#94A3B8"
+            className="mb-3 min-h-[80px] rounded-xl border border-ink-200 bg-ink-50 px-4 py-3 text-base text-ink-900"
+          />
+          {error ? <Text className="mb-2 text-sm text-red-600">{error}</Text> : null}
+          <Button label="Submit report" onPress={() => void submit()} loading={loading} />
+          <Button label="Cancel" variant="outline" className="mt-2" onPress={onClose} />
+        </>
+      )}
+    </SheetModal>
   );
 }
