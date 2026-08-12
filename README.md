@@ -8,7 +8,7 @@ Vendor panel lives in the sibling folder `../Hindustan`.
 
 ```bash
 npm install
-cp .env.example .env   # set EXPO_PUBLIC_API_BASE_URL
+cp .env.example .env   # live API by default; override for local backend
 npm start
 ```
 

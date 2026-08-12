@@ -45,3 +45,6 @@ yarn-error.*
 .stitch-export
 .agent-browser
 
+.cursor/
+.cursor/rules
+.claude

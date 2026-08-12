@@ -20,7 +20,7 @@ Sibling vendor app: `../Hindustan` (`role: "vendor"`).
 
 Rules for this mobile app:
 - Treat Request/Response blocks as ground truth — **do not invent fields**.
-- Base URL: `EXPO_PUBLIC_API_BASE_URL` (dev default `http://192.168.1.76:4000/api/v1` for physical devices on LAN).
+- Base URL: `EXPO_PUBLIC_API_BASE_URL` (default live staging `http://13.204.231.151/api/v1`; override in `.env` for local LAN dev).
 - Envelope: `{ success, data }` / `{ success: false, error }` — always read `data`.
 - Auth: Bearer access token; refresh tokens **rotate** — serialize refresh; store refresh in secure storage (key `hd_customer_refresh_token`).
 - Login is panel-scoped: hardcode `role: "customer"`.
