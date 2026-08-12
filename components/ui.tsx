@@ -11,6 +11,7 @@ type Props = {
   loading?: boolean;
   className?: string;
   icon?: LucideIcon;
+  iconFilled?: boolean;
 };
 
 function iconColor(variant: NonNullable<Props["variant"]>) {
@@ -27,6 +28,7 @@ export function Button({
   loading,
   className = "",
   icon: Icon,
+  iconFilled,
 }: Props) {
   const base = "flex-row items-center justify-center gap-2 rounded-xl px-4 py-3.5";
   const variants = {
@@ -57,7 +59,14 @@ export function Button({
         <ActivityIndicator color={iconColor(variant)} />
       ) : (
         <>
-          {Icon ? <Icon size={18} color={iconColor(variant)} strokeWidth={2.25} /> : null}
+          {Icon ? (
+            <Icon
+              size={18}
+              color={iconColor(variant)}
+              fill={iconFilled ? iconColor(variant) : "transparent"}
+              strokeWidth={iconFilled ? 0 : 2.25}
+            />
+          ) : null}
           <Text className={labels[variant]}>{label}</Text>
         </>
       )}
