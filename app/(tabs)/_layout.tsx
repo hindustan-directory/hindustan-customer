@@ -29,7 +29,7 @@ function TabBarIcon({
       size={24}
       color={color}
       strokeWidth={focused ? 2.5 : 2}
-      fill={filled && focused ? color : "transparent"}
+      fill={filled && focused ? color : "none"}
       opacity={focused ? 1 : 0.55}
     />
   );

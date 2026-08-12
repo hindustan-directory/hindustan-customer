@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { Building2, Search, Tag } from "lucide-react-native";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   FlatList,
   Pressable,
@@ -10,6 +10,11 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  FilterSelectField,
+  SelectSheet,
+  type SelectOption,
+} from "../../components/customer/FilterList";
 import { BusinessCard } from "../../components/BusinessCard";
 import { ScreenState } from "../../components/ui";
 import { ApiError } from "../../src/api/client";
@@ -26,6 +31,17 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [categorySheetOpen, setCategorySheetOpen] = useState(false);
+
+  const categoryOptions = useMemo<SelectOption[]>(
+    () =>
+      categories.map((cat) => ({
+        key: cat.slug,
+        label: cat.name,
+        accentKey: cat.slug,
+      })),
+    [categories],
+  );
 
   const load = useCallback(async () => {
     setError(null);
@@ -108,26 +124,16 @@ export default function HomeScreen() {
           ListHeaderComponent={
             <View className="mb-4">
               {categories.length > 0 ? (
-                <>
-                  <Text className="mb-3 text-lg font-semibold text-ink-900">Categories</Text>
-                  <View className="mb-5 flex-row flex-wrap gap-2">
-                    {categories.slice(0, 8).map((cat) => (
-                      <Pressable
-                        key={cat.id}
-                        onPress={() =>
-                          router.push({
-                            pathname: "/(tabs)/search",
-                            params: { category: cat.slug },
-                          })
-                        }
-                        className="flex-row items-center gap-1.5 rounded-full border border-ink-100 bg-white px-3.5 py-2"
-                      >
-                        <Tag size={13} color="#64748B" strokeWidth={2} />
-                        <Text className="text-sm text-ink-700">{cat.name}</Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                </>
+                <View className="mb-3">
+                  <FilterSelectField
+                    compact
+                    label="Category"
+                    value="Choose…"
+                    accentKey="home-category"
+                    icon={Tag}
+                    onPress={() => setCategorySheetOpen(true)}
+                  />
+                </View>
               ) : null}
               <Text className="mb-3 text-lg font-semibold text-ink-900">Featured nearby</Text>
             </View>
@@ -146,6 +152,21 @@ export default function HomeScreen() {
           )}
         />
       </ScreenState>
+
+      <SelectSheet
+        visible={categorySheetOpen}
+        title="Browse by category"
+        options={categoryOptions}
+        selectedKey=""
+        icon={Tag}
+        onClose={() => setCategorySheetOpen(false)}
+        onSelect={(slug) => {
+          router.push({
+            pathname: "/(tabs)/search",
+            params: { category: slug },
+          });
+        }}
+      />
     </View>
   );
 }
