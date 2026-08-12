@@ -66,10 +66,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       try {
         const refreshToken = await readRefreshToken();
         if (!refreshToken) return;
+
         const tokens = await apiRequest<{
           accessToken: string;
           refreshToken: string;
@@ -84,13 +85,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const me = await usersApi.me();
         if (!cancelled) setUser(me);
       } catch {
-        await clearSession();
+        if (!cancelled) await clearSession();
       } finally {
         if (!cancelled) setIsReady(true);
       }
-    })().catch(() => {
-      if (!cancelled) setIsReady(true);
-    });
+    })();
     return () => {
       cancelled = true;
     };
