@@ -1,5 +1,7 @@
 const PLAIN_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+export const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+
 /** Wall-clock booking time — plain "HH:mm" or UTC-anchored ISO instant. */
 export function formatSlotTime(value: string): string {
   if (/^\d{2}:\d{2}/.test(value)) return value.slice(0, 5);
@@ -37,6 +39,12 @@ export function formatCreatedDate(iso: string): string {
   return date.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 }
 
+export function formatSessionWhen(iso: string) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleString();
+}
+
 export function todayUtcMidnight(): number {
   const date = new Date();
   date.setUTCHours(0, 0, 0, 0);
@@ -46,4 +54,11 @@ export function todayUtcMidnight(): number {
 export function isUpcomingBooking(bookingDate: string, todayUtc: number): boolean {
   const bookingDay = new Date(bookingDate).getTime();
   return !Number.isNaN(bookingDay) && bookingDay >= todayUtc;
+}
+
+/** Local wall-clock greeting: morning until noon, afternoon until 4 PM, then evening. */
+export function timeGreeting(forHour = new Date().getHours()): string {
+  if (forHour < 12) return "Good morning";
+  if (forHour < 16) return "Good afternoon";
+  return "Good evening";
 }

@@ -46,7 +46,7 @@ export function KeyboardForm({
       className={sheet ? undefined : className ?? "flex-1 bg-white"}
       style={
         sheet
-          ? undefined
+          ? { flex: 1 }
           : [{ flex: 1 }, safeTop ? { paddingTop: insets.top + 12 } : null, style]
       }
       contentContainerClassName={

@@ -1,5 +1,6 @@
 import { Image } from "expo-image";
 import { MapPin, Star } from "lucide-react-native";
+import { memo, useCallback } from "react";
 import { Pressable, Text, View } from "react-native";
 import type { VendorSearchResult } from "../src/api/types";
 import { accentFor } from "./customer/accent";
@@ -10,18 +11,19 @@ export function formatRating(avgRating: string) {
   return Number.isFinite(n) ? n.toFixed(1) : "—";
 }
 
-export function BusinessCard({
+export const BusinessCard = memo(function BusinessCard({
   item,
   onPress,
 }: {
   item: VendorSearchResult;
-  onPress: () => void;
+  onPress: (slug: string) => void;
 }) {
   const accentKey = item.categoryName || item.slug;
   const accent = accentFor(accentKey);
+  const handlePress = useCallback(() => onPress(item.slug), [item.slug, onPress]);
 
   return (
-    <Pressable onPress={onPress} className="mb-3 active:opacity-95">
+    <Pressable onPress={handlePress} className="mb-3 active:opacity-95">
       <View className="overflow-hidden rounded-3xl border border-ink-100 bg-white shadow-sm">
         <View className="flex-row gap-3 p-4">
           {item.photoUrl ? (
@@ -64,4 +66,4 @@ export function BusinessCard({
       </View>
     </Pressable>
   );
-}
+});

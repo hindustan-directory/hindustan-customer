@@ -7,20 +7,26 @@ import { colors, goBackOr } from "../src/navigation/chrome";
 export function BackButton({
   label = "Back",
   fallback = "/(auth)/welcome",
+  onDark = false,
 }: {
   label?: string;
   fallback?: Href;
+  onDark?: boolean;
 }) {
+  const tint = onDark ? colors.white : colors.brand600;
+
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={() => goBackOr(fallback)}
-      className="mb-6 min-h-[44px] flex-row items-center gap-1.5 self-start active:opacity-70"
+      className="min-h-[44px] flex-row items-center gap-1.5 self-start active:opacity-70"
       hitSlop={8}
     >
-      <ArrowLeft size={22} color={colors.brand600} strokeWidth={2.25} />
-      <Text className="text-base font-medium text-brand-600">{label}</Text>
+      <ArrowLeft size={22} color={tint} strokeWidth={2.25} />
+      <Text className={`text-base font-medium ${onDark ? "text-white" : "text-brand-600"}`}>
+        {label}
+      </Text>
     </Pressable>
   );
 }

@@ -22,9 +22,13 @@ export function SheetModal({ visible, title, onClose, children }: Props) {
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View className="flex-1 justify-end bg-black/50">
-        <Pressable className="flex-1" accessibilityLabel="Close" onPress={onClose} />
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}>
+      <View className="flex-1">
+        <Pressable className="absolute inset-0 bg-black/50" accessibilityLabel="Close" onPress={onClose} />
+        <KeyboardAvoidingView
+          className="flex-1 justify-end"
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1 }}
+        >
           <View
             className="rounded-t-2xl bg-white px-5 pt-3"
             style={{ paddingBottom: Math.max(insets.bottom, 16) }}

@@ -1,7 +1,9 @@
 import type { LucideIcon } from "lucide-react-native";
 import { Check, ChevronDown } from "lucide-react-native";
 import type { ReactNode } from "react";
+import { useState } from "react";
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { accentFor } from "./accent";
 
 export type SelectOption = {
@@ -65,6 +67,62 @@ export function FilterSelectField({
   );
 }
 
+/** Form/settings tap field + bottom sheet — use when there are 4+ choices (not tag chips). */
+export function FormSelectSheet({
+  label,
+  displayValue,
+  placeholder = "Select…",
+  options,
+  selectedKey,
+  onSelect,
+  icon,
+  accentKey,
+  error,
+  sheetTitle,
+  className = "mb-3.5",
+}: {
+  label: string;
+  displayValue?: string | null;
+  placeholder?: string;
+  options: SelectOption[];
+  selectedKey: string;
+  onSelect: (key: string) => void;
+  icon: LucideIcon;
+  accentKey: string;
+  error?: string;
+  sheetTitle?: string;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <View
+        className={`overflow-hidden rounded-xl border bg-white ${
+          error ? "border-rose-500" : "border-ink-200"
+        } ${className}`}
+      >
+        <FilterSelectField
+          label={label}
+          value={displayValue?.trim() ? displayValue : placeholder}
+          accentKey={accentKey}
+          icon={icon}
+          onPress={() => setOpen(true)}
+        />
+      </View>
+      {error ? <Text className="mb-3 text-xs font-medium text-rose-600">{error}</Text> : null}
+      <SelectSheet
+        visible={open}
+        title={sheetTitle ?? label}
+        options={options}
+        selectedKey={selectedKey}
+        onClose={() => setOpen(false)}
+        onSelect={onSelect}
+      />
+    </>
+  );
+}
+
 export function SelectSheet({
   visible,
   title,
@@ -81,48 +139,55 @@ export function SelectSheet({
   onClose: () => void;
   onSelect: (key: string) => void;
 }) {
+  const insets = useSafeAreaInsets();
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View className="flex-1 justify-end bg-black/40">
-        <Pressable className="flex-1" accessibilityLabel="Close" onPress={onClose} />
-        <View className="max-h-[60%] rounded-t-2xl bg-white pb-6 pt-3">
-          <View className="mb-2 flex-row items-center justify-between px-4">
-            <Text className="text-base font-bold text-ink-900">{title}</Text>
-            <Pressable onPress={onClose} className="px-2 py-1">
-              <Text className="text-sm font-semibold text-brand-600">Done</Text>
-            </Pressable>
-          </View>
-          <ScrollView showsVerticalScrollIndicator={false}>
-            <View className="mx-4 overflow-hidden rounded-xl border border-ink-100">
-              {options.map((option, index) => {
-                const selected = selectedKey === option.key;
-                return (
-                  <View key={option.key}>
-                    {index > 0 ? <FilterDivider /> : null}
-                    <Pressable
-                      onPress={() => {
-                        onSelect(option.key);
-                        onClose();
-                      }}
-                      className={`flex-row items-center justify-between px-3 py-2.5 active:bg-ink-50 ${
-                        selected ? "bg-brand-50/60" : ""
-                      }`}
-                    >
-                      <Text
-                        className={`flex-1 text-sm ${
-                          selected ? "font-semibold text-brand-700" : "font-medium text-ink-900"
-                        }`}
-                        numberOfLines={1}
-                      >
-                        {option.label}
-                      </Text>
-                      {selected ? <Check size={16} color="#2563EB" strokeWidth={2.5} /> : null}
-                    </Pressable>
-                  </View>
-                );
-              })}
+      <View className="flex-1">
+        <Pressable className="absolute inset-0 bg-black/40" accessibilityLabel="Close" onPress={onClose} />
+        <View className="flex-1 justify-end">
+          <View
+            className="max-h-[60%] rounded-t-2xl bg-white pt-3"
+            style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+          >
+            <View className="mb-2 flex-row items-center justify-between px-4">
+              <Text className="text-base font-bold text-ink-900">{title}</Text>
+              <Pressable onPress={onClose} className="px-2 py-1">
+                <Text className="text-sm font-semibold text-brand-600">Done</Text>
+              </Pressable>
             </View>
-          </ScrollView>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View className="mx-4 overflow-hidden rounded-xl border border-ink-100">
+                {options.map((option, index) => {
+                  const selected = selectedKey === option.key;
+                  return (
+                    <View key={option.key}>
+                      {index > 0 ? <FilterDivider /> : null}
+                      <Pressable
+                        onPress={() => {
+                          onSelect(option.key);
+                          onClose();
+                        }}
+                        className={`flex-row items-center justify-between px-3 py-2.5 active:bg-ink-50 ${
+                          selected ? "bg-brand-50/60" : ""
+                        }`}
+                      >
+                        <Text
+                          className={`flex-1 text-sm ${
+                            selected ? "font-semibold text-brand-700" : "font-medium text-ink-900"
+                          }`}
+                          numberOfLines={1}
+                        >
+                          {option.label}
+                        </Text>
+                        {selected ? <Check size={16} color="#2563EB" strokeWidth={2.5} /> : null}
+                      </Pressable>
+                    </View>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          </View>
         </View>
       </View>
     </Modal>

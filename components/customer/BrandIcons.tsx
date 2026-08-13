@@ -1,10 +1,16 @@
 import type { LucideIcon } from "lucide-react-native";
 import type { ReactNode } from "react";
-import { Pressable } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import type { VendorSocialLinks } from "../../src/api/types";
 
 type BrandIconProps = { size?: number; color?: string };
+
+export const WHATSAPP_LABEL = "WhatsApp";
+
+export function isWhatsAppLabel(label: string) {
+  return label === WHATSAPP_LABEL || label.startsWith(`${WHATSAPP_LABEL} `);
+}
 
 function BrandIcon({
   size = 20,
@@ -15,6 +21,41 @@ function BrandIcon({
     <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
       {children}
     </Svg>
+  );
+}
+
+export function WhatsAppChipIcon({ active }: { active?: boolean }) {
+  return <WhatsAppIcon size={12} color={active ? "#FFFFFF" : "#25D366"} />;
+}
+
+export function WhatsAppLabelText({
+  label,
+  textClassName,
+  iconSize = 12,
+  iconColor,
+}: {
+  label: string;
+  textClassName?: string;
+  iconSize?: number;
+  iconColor?: string;
+}) {
+  if (!isWhatsAppLabel(label)) {
+    return (
+      <Text className={textClassName} numberOfLines={1}>
+        {label}
+      </Text>
+    );
+  }
+  const plain = label === WHATSAPP_LABEL ? WHATSAPP_LABEL : label;
+  const suffix = label.length > WHATSAPP_LABEL.length ? label.slice(WHATSAPP_LABEL.length) : "";
+  return (
+    <View className="flex-1 flex-row items-center gap-1">
+      <WhatsAppIcon size={iconSize} color={iconColor ?? "#25D366"} />
+      <Text className={textClassName} numberOfLines={1}>
+        {plain}
+        {suffix}
+      </Text>
+    </View>
   );
 }
 

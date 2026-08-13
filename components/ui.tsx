@@ -1,7 +1,16 @@
 import type { ReactNode } from "react";
+import { useId } from "react";
 import type { LucideIcon } from "lucide-react-native";
 import { CircleAlert, Inbox } from "lucide-react-native";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type ViewProps,
+} from "react-native";
+import Svg, { Defs, LinearGradient as SvgGradient, Rect, Stop } from "react-native-svg";
 
 type Props = {
   label: string;
@@ -12,6 +21,8 @@ type Props = {
   className?: string;
   icon?: LucideIcon;
   iconFilled?: boolean;
+  /** Brand or custom icon — takes precedence over `icon`. */
+  iconNode?: ReactNode;
 };
 
 function iconColor(variant: NonNullable<Props["variant"]>) {
@@ -29,6 +40,7 @@ export function Button({
   className = "",
   icon: Icon,
   iconFilled,
+  iconNode,
 }: Props) {
   const base = "flex-row items-center justify-center gap-2 rounded-xl px-4 py-3.5";
   const variants = {
@@ -59,14 +71,14 @@ export function Button({
         <ActivityIndicator color={iconColor(variant)} />
       ) : (
         <>
-          {Icon ? (
+          {iconNode ?? (Icon ? (
             <Icon
               size={18}
               color={iconColor(variant)}
               fill={iconFilled ? iconColor(variant) : "transparent"}
               strokeWidth={iconFilled ? 0 : 2.25}
             />
-          ) : null}
+          ) : null)}
           <Text className={labels[variant]}>{label}</Text>
         </>
       )}
@@ -74,8 +86,89 @@ export function Button({
   );
 }
 
+/** Circular icon action — edit, assign, etc. Keep tap target 36×36 app-wide. */
+export function IconActionButton({
+  icon: Icon,
+  onPress,
+  disabled,
+  accessibilityLabel,
+  className = "",
+}: {
+  icon: LucideIcon;
+  onPress: () => void;
+  disabled?: boolean;
+  accessibilityLabel: string;
+  className?: string;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      disabled={disabled}
+      onPress={onPress}
+      className={`h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 active:bg-brand-100 ${
+        disabled ? "opacity-50" : ""
+      } ${className}`}
+    >
+      <Icon size={16} color="#2563EB" strokeWidth={2.25} />
+    </Pressable>
+  );
+}
+
+export function Card({
+  children,
+  className = "",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <View
+      className={`rounded-2xl border border-ink-100 bg-white shadow-sm shadow-ink-900/5 ${className}`}
+    >
+      {children}
+    </View>
+  );
+}
+
+export function GradientBox({
+  children,
+  className = "",
+  from = "#2563EB",
+  to = "#1D4ED8",
+  roundedBottom = true,
+  style,
+}: ViewProps & {
+  children?: ReactNode;
+  className?: string;
+  from?: string;
+  to?: string;
+  roundedBottom?: boolean;
+}) {
+  const gradId = useId().replace(/:/g, "");
+
+  return (
+    <View
+      className={`overflow-hidden ${roundedBottom ? "rounded-b-3xl" : ""} ${className}`}
+      style={style}
+    >
+      <Svg pointerEvents="none" style={StyleSheet.absoluteFill} preserveAspectRatio="none">
+        <Defs>
+          <SvgGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
+            <Stop offset="0%" stopColor={from} />
+            <Stop offset="100%" stopColor={to} />
+          </SvgGradient>
+        </Defs>
+        <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${gradId})`} />
+      </Svg>
+      {children}
+    </View>
+  );
+}
+
 export function ScreenState({
   loading,
+  loadingShimmer,
   error,
   empty,
   emptyMessage = "Nothing here yet",
@@ -84,6 +177,7 @@ export function ScreenState({
   children,
 }: {
   loading?: boolean;
+  loadingShimmer?: ReactNode;
   error?: string | null;
   empty?: boolean;
   emptyMessage?: string;
@@ -92,6 +186,9 @@ export function ScreenState({
   children: ReactNode;
 }) {
   if (loading) {
+    if (loadingShimmer) {
+      return <View className="flex-1">{loadingShimmer}</View>;
+    }
     return (
       <View className="flex-1 items-center justify-center py-16">
         <ActivityIndicator size="large" color="#2563EB" />
