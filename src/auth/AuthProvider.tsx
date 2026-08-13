@@ -42,6 +42,11 @@ async function applyAuthResult(result: {
   accessToken: string;
   refreshToken: string;
 }) {
+  if (result.user.role !== "customer") {
+    setAccessToken(null);
+    await persistRefreshToken(null);
+    throw new Error("This app is for customer accounts only");
+  }
   setAccessToken(result.accessToken);
   await persistRefreshToken(result.refreshToken);
   return result.user;
@@ -53,8 +58,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const clearSession = useCallback(async () => {
     setAccessToken(null);
-    await persistRefreshToken(null);
     setUser(null);
+    try {
+      await persistRefreshToken(null);
+    } catch {
+      // ponytail: in-memory session already cleared; SecureStore can fail on boot
+    }
   }, []);
 
   useEffect(() => {
@@ -83,6 +92,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAccessToken(tokens.accessToken);
         await persistRefreshToken(tokens.refreshToken);
         const me = await usersApi.me();
+        if (me.role !== "customer") {
+          await clearSession();
+          return;
+        }
         if (!cancelled) setUser(me);
       } catch {
         if (!cancelled) await clearSession();
@@ -127,8 +140,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [clearSession, user]);
 
   const refreshProfile = useCallback(async () => {
-    setUser(await usersApi.me());
-  }, []);
+    const me = await usersApi.me();
+    if (me.role !== "customer") {
+      await clearSession();
+      return;
+    }
+    setUser(me);
+  }, [clearSession]);
 
   const value = useMemo(
     () => ({

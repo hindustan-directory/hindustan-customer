@@ -1,14 +1,12 @@
 import * as SecureStore from "expo-secure-store";
+import { resolveApiBaseUrl } from "./baseUrl";
 import type { ApiEnvelope, ApiErrorBody } from "./types";
 
-const DEFAULT_API_BASE_URL = "http://13.204.231.151/api/v1";
 const REFRESH_TOKEN_KEY = "hd_customer_refresh_token";
 const REQUEST_TIMEOUT_MS = 20_000;
 const MAX_TRANSIENT_RETRIES = 3;
 
-export const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ||
-  DEFAULT_API_BASE_URL;
+export const API_BASE_URL = resolveApiBaseUrl();
 
 /** Access token stays in memory only (OWASP-JWT / AGENTS.md). */
 let accessToken: string | null = null;
@@ -28,15 +26,23 @@ export function setOnSessionExpired(handler: (() => void) | null) {
 }
 
 export async function persistRefreshToken(token: string | null) {
-  if (token) {
-    await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, token);
-  } else {
-    await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+  try {
+    if (token) {
+      await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, token);
+    } else {
+      await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+    }
+  } catch {
+    // ponytail: boot must not crash if SecureStore unavailable (simulator/web)
   }
 }
 
 export async function readRefreshToken() {
-  return SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+  try {
+    return await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+  } catch {
+    return null;
+  }
 }
 
 export class ApiError extends Error {
