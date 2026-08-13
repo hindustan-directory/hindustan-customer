@@ -1,7 +1,8 @@
+import { FlashList } from "@shopify/flash-list";
 import { router, useLocalSearchParams } from "expo-router";
 import { Search, Star, Tag, X } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FlatList, Pressable, RefreshControl, Text, TextInput, View } from "react-native";
+import { Pressable, RefreshControl, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BusinessCard } from "../../components/BusinessCard";
 import {
@@ -10,6 +11,7 @@ import {
   type SelectOption,
 } from "../../components/customer/FilterList";
 import { ListPagination } from "../../components/customer/ListPagination";
+import { ShimmerBusinessList } from "../../components/Shimmer";
 import { Button, ScreenState } from "../../components/ui";
 import { ApiError } from "../../src/api/client";
 import { directoryApi, fetchCategories } from "../../src/api/endpoints";
@@ -126,6 +128,17 @@ export default function SearchScreen() {
     runSearch(1);
   }
 
+  const onPressBusiness = useCallback((businessSlug: string) => {
+    router.push(`/business/${businessSlug}`);
+  }, []);
+
+  const renderBusiness = useCallback(
+    ({ item }: { item: VendorSearchResult }) => (
+      <BusinessCard item={item} onPress={onPressBusiness} />
+    ),
+    [onPressBusiness],
+  );
+
   const activeFilters = (category ? 1 : 0) + (city.trim() ? 1 : 0) + (rating ? 1 : 0);
 
   return (
@@ -226,13 +239,14 @@ export default function SearchScreen() {
 
       <ScreenState
         loading={loading}
+        loadingShimmer={<ShimmerBusinessList />}
         error={error}
         empty={!loading && !error && items.length === 0}
         emptyMessage="No matches — try another search or filter"
         emptyIcon={Search}
         onRetry={() => void executeSearch(page)}
       >
-        <FlatList
+        <FlashList
           data={items}
           keyExtractor={(item) => item.id}
           contentContainerClassName="px-5 py-4 pb-4"
@@ -245,9 +259,7 @@ export default function SearchScreen() {
               }}
             />
           }
-          renderItem={({ item }) => (
-            <BusinessCard item={item} onPress={() => router.push(`/business/${item.slug}`)} />
-          )}
+          renderItem={renderBusiness}
         />
         <ListPagination
           page={page}

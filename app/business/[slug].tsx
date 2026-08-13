@@ -1,44 +1,38 @@
-import { Image } from "expo-image";
-import { router, Stack, useLocalSearchParams } from "expo-router";
-import {
-  ExternalLink,
-  Heart,
-  MapPin,
-  Phone,
-  Star,
-} from "lucide-react-native";
-import {
-  LinkIconButton,
-  SOCIAL_BRAND_ICONS,
-  WhatsAppIcon,
-} from "../../components/customer/BrandIcons";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { FlashList } from "@shopify/flash-list";
+import { useLocalSearchParams, router, useNavigation } from "expo-router";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   BackHandler,
-  Linking,
   Pressable,
   ScrollView,
   Text,
   TextInput,
   View,
+  useWindowDimensions,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from "react-native";
+import { MessageSquare, Package, Star } from "lucide-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Field } from "../../components/Field";
-import { formatRating } from "../../components/BusinessCard";
+import { BusinessDetailActions } from "../../components/customer/business/BusinessDetailActions";
+import { BusinessHeader } from "../../components/customer/business/BusinessHeader";
+import { BusinessHeroSummary } from "../../components/customer/business/BusinessHeroSummary";
+import { BusinessProductRow } from "../../components/customer/business/BusinessProductRow";
+import { BusinessReviewRow } from "../../components/customer/business/BusinessReviewRow";
+import { BusinessTabBar } from "../../components/customer/business/BusinessTabBar";
 import { ReviewEditModal } from "../../components/customer/ReviewEditModal";
 import { SheetModal } from "../../components/customer/SheetModal";
 import { Button, ScreenState } from "../../components/ui";
+import { ShimmerBusinessDetail } from "../../components/Shimmer";
 import { ApiError } from "../../src/api/client";
-import { customerApi, directoryApi } from "../../src/api/endpoints";
-import type {
-  CustomerReview,
-  Product,
-  PublicReview,
-  ReportReason,
-  Vendor,
-} from "../../src/api/types";
+import { customerApi } from "../../src/api/endpoints";
+import type { Product, PublicReview, ReportReason } from "../../src/api/types";
 import { useAuth } from "../../src/auth/AuthProvider";
+import { useBusinessDetailStore, type BusinessDetailTab } from "../../src/stores/businessDetailStore";
 
-const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const TAB_ORDER: BusinessDetailTab[] = ["about", "products", "reviews"];
+const BOTTOM_BAR_HEIGHT = 88;
 
 const REPORT_REASONS: { value: ReportReason; label: string }[] = [
   { value: "fake", label: "Fake listing" },
@@ -48,97 +42,50 @@ const REPORT_REASONS: { value: ReportReason; label: string }[] = [
   { value: "other", label: "Other" },
 ];
 
-function formatPriceRange(min: string | null, max: string | null): string | null {
-  if (min == null && max == null) return null;
-  if (min != null && max != null) return `₹${min} – ₹${max}`;
-  if (min != null) return `From ₹${min}`;
-  return `Up to ₹${max}`;
-}
-
-function openExternalUrl(url: string) {
-  void Linking.openURL(url).catch(() => undefined);
-}
-
-function whatsAppUrl(number: string) {
-  return `https://wa.me/${number.replace(/\D/g, "")}`;
-}
-
 export default function BusinessDetailScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
+  const navigation = useNavigation();
   const { isAuthenticated } = useAuth();
-  const [vendor, setVendor] = useState<Vendor | null>(null);
-  const [reviews, setReviews] = useState<PublicReview[]>([]);
-  const [reviewPage, setReviewPage] = useState(1);
-  const [reviewTotalPages, setReviewTotalPages] = useState(1);
-  const [reviewsLoading, setReviewsLoading] = useState(false);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [favBusy, setFavBusy] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const pagerRef = useRef<ScrollView>(null);
+  const listBottomPad = BOTTOM_BAR_HEIGHT + Math.max(insets.bottom, 12);
+
+  const vendor = useBusinessDetailStore((s) => s.vendor);
+  const tab = useBusinessDetailStore((s) => s.tab);
+  const loading = useBusinessDetailStore((s) => s.loading);
+  const error = useBusinessDetailStore((s) => s.error);
+  const isSaved = useBusinessDetailStore((s) => s.isSaved);
+  const favBusy = useBusinessDetailStore((s) => s.favBusy);
+  const myReview = useBusinessDetailStore((s) => s.myReview);
+  const products = useBusinessDetailStore((s) => s.products);
+  const productsLoaded = useBusinessDetailStore((s) => s.productsLoaded);
+  const productsLoading = useBusinessDetailStore((s) => s.productsLoading);
+  const reviews = useBusinessDetailStore((s) => s.reviews);
+  const reviewTotalPages = useBusinessDetailStore((s) => s.reviewTotalPages);
+  const currentReviewPage = useBusinessDetailStore((s) => s.reviewPage);
+  const reviewsLoading = useBusinessDetailStore((s) => s.reviewsLoading);
+  const setTab = useBusinessDetailStore((s) => s.setTab);
+  const load = useBusinessDetailStore((s) => s.load);
+  const loadMoreReviews = useBusinessDetailStore((s) => s.loadMoreReviews);
+  const toggleFavourite = useBusinessDetailStore((s) => s.toggleFavourite);
+  const refreshAfterReview = useBusinessDetailStore((s) => s.refreshAfterReview);
+  const reset = useBusinessDetailStore((s) => s.reset);
+
   const [enquiryOpen, setEnquiryOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-  const [myReview, setMyReview] = useState<CustomerReview | null>(null);
-
-  const load = useCallback(async () => {
-    if (!slug) return;
-    setError(null);
-    try {
-      const [biz, rev, prod] = await Promise.all([
-        directoryApi.business(slug),
-        directoryApi.reviews(slug, 1, 10),
-        directoryApi.products(slug, { page: 1, pageSize: 20 }),
-      ]);
-      setVendor(biz);
-      setReviews(rev.items);
-      setReviewPage(1);
-      setReviewTotalPages(rev.totalPages);
-      setProducts(prod.items);
-
-      if (isAuthenticated) {
-        try {
-          const [favs, mine] = await Promise.all([
-            customerApi.favourites(1, 100),
-            customerApi.listReviews(1, 100),
-          ]);
-          setIsSaved(favs.items.some((row) => row.vendor.id === biz.id));
-          setMyReview(mine.items.find((row) => row.vendorId === biz.id) ?? null);
-        } catch {
-          // Favourite/review status is optional chrome — don't fail the page.
-          setMyReview(null);
-        }
-      } else {
-        setIsSaved(false);
-        setMyReview(null);
-      }
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Business not found");
-    } finally {
-      setLoading(false);
-    }
-  }, [slug, isAuthenticated]);
-
-  async function loadMoreReviews() {
-    if (!slug || reviewPage >= reviewTotalPages || reviewsLoading) return;
-    setReviewsLoading(true);
-    try {
-      const nextPage = reviewPage + 1;
-      const rev = await directoryApi.reviews(slug, nextPage, 10);
-      setReviews((prev) => [...prev, ...rev.items]);
-      setReviewPage(nextPage);
-      setReviewTotalPages(rev.totalPages);
-    } catch {
-    } finally {
-      setReviewsLoading(false);
-    }
-  }
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (!slug) return;
+    void load(slug, isAuthenticated);
+    return () => reset();
+  }, [slug, isAuthenticated, load, reset]);
 
-  // System back dismisses enquiry/review/report modal before popping the screen.
+  useLayoutEffect(() => {
+    navigation.setOptions({ title: vendor?.businessName ?? "Business" });
+  }, [navigation, vendor?.businessName]);
+
   useEffect(() => {
     if (!enquiryOpen && !reviewOpen && !reportOpen) return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
@@ -159,313 +106,211 @@ export default function BusinessDetailScreen() {
     return () => sub.remove();
   }, [enquiryOpen, reviewOpen, reportOpen]);
 
-  async function toggleFavourite() {
-    if (!vendor) return;
-    if (!isAuthenticated) {
-      router.push("/(auth)/login");
-      return;
-    }
-    setFavBusy(true);
-    setError(null);
-    try {
-      if (isSaved) {
-        await customerApi.removeFavourite(vendor.id);
-        setIsSaved(false);
-      } else {
-        await customerApi.addFavourite(vendor.id);
-        setIsSaved(true);
-      }
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Favourite failed");
-    } finally {
-      setFavBusy(false);
-    }
-  }
+  const handleToggleFavourite = useCallback(async () => {
+    const result = await toggleFavourite(isAuthenticated);
+    if (result === "auth") router.push("/(auth)/login");
+  }, [toggleFavourite, isAuthenticated]);
 
-  function handleWriteReview() {
+  const handleWriteReview = useCallback(() => {
     if (!isAuthenticated) {
       router.push("/(auth)/login");
       return;
     }
     setReviewOpen(true);
-  }
+  }, [isAuthenticated]);
 
-  const hero =
-    vendor?.coverBannerUrl ?? vendor?.photos?.[0]?.imageUrl ?? null;
-  const priceRange = vendor
-    ? formatPriceRange(vendor.priceRangeMin ?? null, vendor.priceRangeMax ?? null)
-    : null;
-  const socialEntries = vendor?.socialLinks
-    ? SOCIAL_BRAND_ICONS.filter(({ key }) => !!vendor.socialLinks?.[key])
-    : [];
-  const hasContactLinks =
-    !!vendor?.phone || !!vendor?.whatsappNumber || !!vendor?.googleMapLink || !!vendor?.website;
+  const scrollToTab = useCallback(
+    (next: BusinessDetailTab, animated = true) => {
+      const index = TAB_ORDER.indexOf(next);
+      if (index < 0) return;
+      pagerRef.current?.scrollTo({ x: index * width, animated });
+    },
+    [width],
+  );
+
+  const handleTabPress = useCallback(
+    (next: BusinessDetailTab) => {
+      setTab(next);
+      scrollToTab(next);
+    },
+    [setTab, scrollToTab],
+  );
+
+  const handlePagerScrollEnd = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const index = Math.round(event.nativeEvent.contentOffset.x / width);
+      const next = TAB_ORDER[index];
+      if (next && next !== tab) setTab(next);
+    },
+    [tab, setTab, width],
+  );
+
+  useEffect(() => {
+    pagerRef.current?.scrollTo({ x: 0, animated: false });
+  }, [slug]);
+
+  useEffect(() => {
+    scrollToTab(tab, false);
+    // ponytail: reposition pager on rotation only; tab taps/swipes drive scroll elsewhere
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- width-only
+  }, [width]);
+
+  const renderProduct = useCallback(
+    ({ item }: { item: Product }) => <BusinessProductRow item={item} />,
+    [],
+  );
+
+  const renderReview = useCallback(
+    ({ item }: { item: PublicReview }) => <BusinessReviewRow item={item} />,
+    [],
+  );
+
+  const productsKeyExtractor = useCallback((item: Product) => item.id, []);
+  const reviewsKeyExtractor = useCallback((item: PublicReview) => item.id, []);
 
   return (
     <>
-      <Stack.Screen options={{ title: vendor?.businessName ?? "Business" }} />
-      <ScreenState loading={loading} error={error} onRetry={() => { setLoading(true); void load(); }}>
+      <ScreenState
+        loading={loading}
+        loadingShimmer={<ShimmerBusinessDetail />}
+        error={error}
+        onRetry={() => {
+          if (slug) void load(slug, isAuthenticated);
+        }}
+      >
         {vendor ? (
-          <ScrollView className="flex-1 bg-ink-50" contentContainerClassName="pb-10">
-            <View className="relative h-52 bg-brand-100">
-              {hero ? (
-                <Image source={{ uri: hero }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
-              ) : null}
-              {vendor.logoUrl ? (
-                <View className="absolute -bottom-8 left-5 h-16 w-16 overflow-hidden rounded-2xl border-2 border-white bg-white shadow-sm">
-                  <Image
-                    source={{ uri: vendor.logoUrl }}
-                    style={{ width: "100%", height: "100%" }}
-                    contentFit="cover"
-                  />
-                </View>
-              ) : null}
-            </View>
-            <View className={`bg-white px-5 pb-4 ${vendor.logoUrl ? "pt-10" : "pt-4"}`}>
-              <Text className="text-2xl font-bold text-ink-900">{vendor.businessName}</Text>
-              <Text className="mt-1 text-sm text-ink-500">
-                {vendor.category?.name ?? "Business"}
-                {vendor.city ? ` · ${vendor.city}` : ""}
-              </Text>
-              <View className="mt-2 flex-row flex-wrap items-center gap-2">
-                <View className="flex-row items-center gap-1.5">
-                  <Star size={16} color="#1D4ED8" fill="#1D4ED8" strokeWidth={0} />
-                  <Text className="text-base text-brand-700">
-                    {formatRating(vendor.avgRating)} ({vendor.reviewCount} reviews)
-                  </Text>
-                </View>
-                {priceRange ? (
-                  <Text className="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-semibold text-brand-700">
-                    {priceRange}
-                  </Text>
-                ) : null}
-                {vendor.is24x7 ? (
-                  <Text className="rounded-full bg-ink-100 px-2.5 py-0.5 text-xs font-semibold text-ink-700">
-                    Open 24×7
-                  </Text>
-                ) : null}
-                {vendor.hasEmergencyService ? (
-                  <Text className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
-                    Emergency
-                  </Text>
-                ) : null}
-              </View>
-              {vendor.description ? (
-                <Text className="mt-3 text-sm leading-5 text-ink-700">{vendor.description}</Text>
-              ) : null}
-              {(vendor.addressLine || vendor.city) && (
-                <Text className="mt-3 text-sm text-ink-500">
-                  {[vendor.addressLine, vendor.city, vendor.state, vendor.pincode]
-                    .filter(Boolean)
-                    .join(", ")}
-                </Text>
-              )}
-              {vendor.brandsAvailable?.length ? (
-                <Text className="mt-2 text-sm text-ink-500">
-                  Brands: {vendor.brandsAvailable.join(", ")}
-                </Text>
-              ) : null}
-              <View className="mt-4 flex-row flex-wrap gap-2">
-                <Button label="Enquire" className="flex-1" onPress={() => setEnquiryOpen(true)} />
-                <Button
-                  label="Book"
-                  variant="secondary"
-                  className="flex-1"
-                  onPress={() =>
-                    router.push({
-                      pathname: "/bookings/new",
-                      params: { vendorId: vendor.id, name: vendor.businessName },
-                    })
-                  }
-                />
-                <Button
-                  label={isSaved ? "Saved" : "Save"}
-                  variant="outline"
-                  icon={Heart}
-                  iconFilled={isSaved}
-                  loading={favBusy}
-                  onPress={() => void toggleFavourite()}
-                />
-              </View>
-              <Pressable className="mt-2 py-1" onPress={() => {
-                if (!isAuthenticated) {
-                  router.push("/(auth)/login");
-                  return;
-                }
-                setReportOpen(true);
-              }}>
-                <Text className="text-sm text-ink-400">Report this business</Text>
-              </Pressable>
-              {hasContactLinks ? (
-                <View className="mt-4 flex-row flex-wrap gap-3">
-                  {vendor.phone ? (
-                    <LinkIconButton
-                      accessibilityLabel={`Call ${vendor.phone}`}
-                      onPress={() => openExternalUrl(`tel:${vendor.phone}`)}
-                    >
-                      <Phone size={20} color="#2563EB" strokeWidth={2} />
-                    </LinkIconButton>
-                  ) : null}
-                  {vendor.whatsappNumber ? (
-                    <LinkIconButton
-                      accessibilityLabel={`WhatsApp ${vendor.whatsappNumber}`}
-                      className="bg-emerald-50"
-                      onPress={() => openExternalUrl(whatsAppUrl(vendor.whatsappNumber!))}
-                    >
-                      <WhatsAppIcon size={22} />
-                    </LinkIconButton>
-                  ) : null}
-                  {vendor.googleMapLink ? (
-                    <LinkIconButton
-                      accessibilityLabel="Open in Maps"
-                      className="bg-rose-50"
-                      onPress={() => openExternalUrl(vendor.googleMapLink!)}
-                    >
-                      <MapPin size={20} color="#E11D48" strokeWidth={2} />
-                    </LinkIconButton>
-                  ) : null}
-                  {vendor.website ? (
-                    <LinkIconButton
-                      accessibilityLabel="Visit website"
-                      onPress={() => openExternalUrl(vendor.website!)}
-                    >
-                      <ExternalLink size={20} color="#2563EB" strokeWidth={2} />
-                    </LinkIconButton>
-                  ) : null}
-                </View>
-              ) : null}
-            </View>
+          <View className="flex-1 bg-ink-50">
+            <BusinessHeroSummary vendor={vendor} />
+            <BusinessTabBar
+              active={tab}
+              onChange={handleTabPress}
+              productCount={productsLoaded && products.length > 0 ? products.length : undefined}
+              reviewCount={vendor.reviewCount || undefined}
+            />
 
-            {socialEntries.length > 0 ? (
-              <Section title="Social">
-                <View className="flex-row flex-wrap gap-3">
-                  {socialEntries.map(({ key, label, Icon, wrap }) => (
-                    <LinkIconButton
-                      key={key}
-                      accessibilityLabel={label}
-                      className={wrap}
-                      onPress={() => openExternalUrl(vendor.socialLinks![key]!)}
-                    >
-                      <Icon size={22} />
-                    </LinkIconButton>
-                  ))}
-                </View>
-              </Section>
-            ) : null}
-
-            {vendor.hours && vendor.hours.length > 0 ? (
-              <Section title="Hours">
-                {vendor.is24x7 ? (
-                  <Text className="mb-2 text-sm font-medium text-ink-700">Open 24 hours every day</Text>
-                ) : null}
-                {vendor.hours
-                  .slice()
-                  .sort((a, b) => a.dayOfWeek - b.dayOfWeek)
-                  .map((h) => (
-                    <Text key={h.id} className="mb-1 text-sm text-ink-700">
-                      {DAY_NAMES[h.dayOfWeek] ?? h.dayOfWeek}:{" "}
-                      {h.isClosed
-                        ? "Closed"
-                        : `${h.opensAt?.slice(0, 5) ?? "—"} – ${h.closesAt?.slice(0, 5) ?? "—"}`}
-                    </Text>
-                  ))}
-              </Section>
-            ) : vendor.is24x7 ? (
-              <Section title="Hours">
-                <Text className="text-sm text-ink-700">Open 24 hours every day</Text>
-              </Section>
-            ) : null}
-
-            {vendor.photos && vendor.photos.length > 0 ? (
-              <Section title="Photos">
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-1">
-                  {vendor.photos.map((photo) => (
-                    <View key={photo.id} className="mx-1 h-28 w-36 overflow-hidden rounded-xl bg-ink-100">
-                      <Image
-                        source={{ uri: photo.imageUrl }}
-                        style={{ width: "100%", height: "100%" }}
-                        contentFit="cover"
-                      />
-                    </View>
-                  ))}
-                </ScrollView>
-              </Section>
-            ) : null}
-
-            {vendor.catalogues && vendor.catalogues.length > 0 ? (
-              <Section title="Catalogues & brochures">
-                {vendor.catalogues.map((doc) => (
-                  <Pressable
-                    key={doc.id}
-                    className="mb-2 flex-row items-center justify-between border-b border-ink-100 pb-2"
-                    onPress={() => openExternalUrl(doc.fileUrl)}
-                  >
-                    <View className="flex-1 pr-3">
-                      <Text className="font-medium text-ink-900" numberOfLines={1}>
-                        {doc.fileName}
-                      </Text>
-                      <Text className="text-xs capitalize text-ink-500">
-                        {(doc.kind ?? "catalogue").replace(/_/g, " ")}
-                      </Text>
-                    </View>
-                    <ExternalLink size={16} color="#2563EB" strokeWidth={2} />
-                  </Pressable>
-                ))}
-              </Section>
-            ) : null}
-
-            <Section title="Products">
-              {products.length === 0 ? (
-                <Text className="text-sm text-ink-500">No products listed</Text>
-              ) : (
-                products.map((p) => (
-                  <View key={p.id} className="mb-3 flex-row justify-between border-b border-ink-100 pb-2">
-                    <View className="flex-1 pr-3">
-                      <Text className="font-medium text-ink-900">{p.name}</Text>
-                      {p.description ? (
-                        <Text className="text-xs text-ink-500" numberOfLines={2}>
-                          {p.description}
-                        </Text>
-                      ) : null}
-                    </View>
-                    <Text className="text-sm font-semibold text-ink-900">
-                      {p.price != null ? `₹${p.price}` : p.availability.replace(/_/g, " ")}
-                    </Text>
-                  </View>
-                ))
-              )}
-            </Section>
-
-            <Section
-              title="Reviews"
-              actionLabel={myReview ? "Edit review" : "Write review"}
-              onAction={handleWriteReview}
+            <ScrollView
+              ref={pagerRef}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              bounces={false}
+              decelerationRate="fast"
+              onMomentumScrollEnd={handlePagerScrollEnd}
+              scrollEventThrottle={16}
+              className="flex-1"
             >
-              {reviews.length === 0 ? (
-                <Text className="text-sm text-ink-500">No reviews yet</Text>
-              ) : (
-                reviews.map((r) => (
-                  <View key={r.id} className="mb-3 border-b border-ink-100 pb-2">
-                    <View className="flex-row items-center gap-1.5">
-                      <Star size={14} color="#1D4ED8" fill="#1D4ED8" strokeWidth={0} />
-                      <Text className="font-medium text-ink-900">
-                        {r.rating} · {r.customerName}
-                      </Text>
-                    </View>
-                    {r.comment ? <Text className="mt-1 text-sm text-ink-600">{r.comment}</Text> : null}
-                  </View>
-                ))
-              )}
-              {reviewPage < reviewTotalPages ? (
-                <Button
-                  label={reviewsLoading ? "Loading…" : "Load more reviews"}
-                  variant="outline"
-                  disabled={reviewsLoading}
-                  onPress={() => void loadMoreReviews()}
+              <View style={{ width }} className="flex-1">
+                <ScrollView
+                  className="flex-1"
+                  nestedScrollEnabled
+                  contentContainerStyle={{ paddingBottom: listBottomPad }}
+                >
+                  <BusinessHeader
+                    vendor={vendor}
+                    isAuthenticated={isAuthenticated}
+                    onReport={() => setReportOpen(true)}
+                  />
+                </ScrollView>
+              </View>
+
+              <View style={{ width }} className="flex-1">
+                <FlashList
+                  className="flex-1"
+                  data={products}
+                  keyExtractor={productsKeyExtractor}
+                  contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: listBottomPad }}
+                  ListEmptyComponent={
+                    productsLoading ? (
+                      <Text className="py-16 text-center text-sm text-ink-500">Loading products…</Text>
+                    ) : (
+                      <View className="items-center px-4 py-16">
+                        <Package size={40} color="#94A3B8" strokeWidth={1.75} />
+                        <Text className="mt-3 text-center text-base font-medium text-ink-700">
+                          No products listed yet
+                        </Text>
+                        <Text className="mt-1 text-center text-sm text-ink-500">
+                          Check back later or send an enquiry.
+                        </Text>
+                      </View>
+                    )
+                  }
+                  renderItem={renderProduct}
                 />
-              ) : null}
-            </Section>
-          </ScrollView>
+              </View>
+
+              <View style={{ width }} className="flex-1">
+                <FlashList
+                  className="flex-1"
+                  data={reviews}
+                  keyExtractor={reviewsKeyExtractor}
+                  contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: listBottomPad }}
+                  onEndReached={() => void loadMoreReviews()}
+                  onEndReachedThreshold={0.4}
+                  ListHeaderComponent={
+                    <Pressable
+                      className="mb-4 flex-row items-center justify-between rounded-2xl border border-brand-100 bg-brand-50 px-4 py-3.5 active:bg-brand-100"
+                      onPress={handleWriteReview}
+                    >
+                      <View className="flex-row items-center gap-2.5">
+                        <View className="h-9 w-9 items-center justify-center rounded-full bg-white">
+                          <Star size={18} color="#2563EB" strokeWidth={2} />
+                        </View>
+                        <View>
+                          <Text className="text-sm font-semibold text-ink-900">
+                            {myReview ? "Update your review" : "Share your experience"}
+                          </Text>
+                          <Text className="text-xs text-ink-500">Help others choose wisely</Text>
+                        </View>
+                      </View>
+                      <Text className="text-sm font-bold text-brand-600">
+                        {myReview ? "Edit" : "Write"}
+                      </Text>
+                    </Pressable>
+                  }
+                  ListEmptyComponent={
+                    reviewsLoading ? (
+                      <Text className="py-16 text-center text-sm text-ink-500">Loading reviews…</Text>
+                    ) : (
+                      <View className="items-center px-4 py-10">
+                        <MessageSquare size={40} color="#94A3B8" strokeWidth={1.75} />
+                        <Text className="mt-3 text-center text-base font-medium text-ink-700">
+                          No reviews yet
+                        </Text>
+                        <Text className="mt-1 text-center text-sm text-ink-500">
+                          Be the first to review this business.
+                        </Text>
+                      </View>
+                    )
+                  }
+                  ListFooterComponent={
+                    currentReviewPage < reviewTotalPages ? (
+                      <Button
+                        label={reviewsLoading ? "Loading…" : "Load more reviews"}
+                        variant="outline"
+                        disabled={reviewsLoading}
+                        className="mt-2"
+                        onPress={() => void loadMoreReviews()}
+                      />
+                    ) : null
+                  }
+                  renderItem={renderReview}
+                />
+              </View>
+            </ScrollView>
+
+            <BusinessDetailActions
+              isSaved={isSaved}
+              favBusy={favBusy}
+              onEnquire={() => setEnquiryOpen(true)}
+              onBook={() =>
+                router.push({
+                  pathname: "/bookings/new",
+                  params: { vendorId: vendor.id, name: vendor.businessName },
+                })
+              }
+              onToggleFavourite={() => void handleToggleFavourite()}
+            />
+          </View>
         ) : null}
       </ScreenState>
 
@@ -482,7 +327,7 @@ export default function BusinessDetailScreen() {
             businessName={vendor.businessName}
             existingReview={myReview}
             onClose={() => setReviewOpen(false)}
-            onSaved={() => void load()}
+            onSaved={() => void refreshAfterReview(isAuthenticated)}
           />
           <ReportModal
             visible={reportOpen}
@@ -492,34 +337,6 @@ export default function BusinessDetailScreen() {
         </>
       ) : null}
     </>
-  );
-}
-
-function Section({
-  title,
-  children,
-  actionLabel,
-  onAction,
-}: {
-  title: string;
-  children: ReactNode;
-  actionLabel?: string;
-  onAction?: () => void;
-}) {
-  return (
-    <View className="mx-5 mt-4 overflow-hidden rounded-3xl border border-ink-100 bg-white shadow-sm">
-      <View className="px-4 py-4">
-        <View className="mb-3 flex-row items-center justify-between">
-          <Text className="text-lg font-semibold text-ink-900">{title}</Text>
-          {actionLabel && onAction ? (
-            <Pressable onPress={onAction}>
-              <Text className="text-sm text-brand-600">{actionLabel}</Text>
-            </Pressable>
-          ) : null}
-        </View>
-        {children}
-      </View>
-    </View>
   );
 }
 

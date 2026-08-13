@@ -5,6 +5,7 @@ import { FlatList, RefreshControl, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SavedBusinessCard } from "../../components/customer/SavedBusinessCard";
 import { ListPagination } from "../../components/customer/ListPagination";
+import { ShimmerBusinessList } from "../../components/Shimmer";
 import { Button, ScreenState } from "../../components/ui";
 import { ApiError } from "../../src/api/client";
 import { customerApi } from "../../src/api/endpoints";
@@ -95,6 +96,7 @@ export default function FavouritesScreen() {
 
       <ScreenState
         loading={loading}
+        loadingShimmer={<ShimmerBusinessList />}
         error={error}
         empty={!loading && !error && items.length === 0}
         emptyMessage="No favourites yet — heart a business to save it"

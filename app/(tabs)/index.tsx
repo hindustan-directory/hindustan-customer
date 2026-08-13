@@ -1,8 +1,8 @@
 import { router } from "expo-router";
 import { Building2, Search, Tag } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { FlashList } from "@shopify/flash-list";
 import {
-  FlatList,
   Pressable,
   RefreshControl,
   Text,
@@ -16,11 +16,13 @@ import {
   type SelectOption,
 } from "../../components/customer/FilterList";
 import { BusinessCard } from "../../components/BusinessCard";
+import { ShimmerHome } from "../../components/Shimmer";
 import { ScreenState } from "../../components/ui";
 import { ApiError } from "../../src/api/client";
 import { directoryApi, fetchCategories } from "../../src/api/endpoints";
 import type { BusinessCategory, VendorSearchResult } from "../../src/api/types";
 import { useAuth } from "../../src/auth/AuthProvider";
+import { timeGreeting } from "../../src/lib/datetime";
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -73,12 +75,25 @@ export default function HomeScreen() {
     void load();
   }, [load]);
 
+  const onPressBusiness = useCallback((slug: string) => {
+    router.push(`/business/${slug}`);
+  }, []);
+
+  const renderFeatured = useCallback(
+    ({ item }: { item: VendorSearchResult }) => (
+      <BusinessCard item={item} onPress={onPressBusiness} />
+    ),
+    [onPressBusiness],
+  );
+
   return (
     <View className="flex-1 bg-ink-50" style={{ paddingTop: insets.top }}>
       <View className="bg-brand-600 px-5 pb-5 pt-3">
         <Text className="text-sm text-brand-100">Hindustan Directory</Text>
         <Text className="mt-1 text-2xl font-bold text-white">
-          {user ? `Hi, ${user.fullName.split(" ")[0]}` : "Find local businesses"}
+          {user
+            ? `${timeGreeting()}, ${user.fullName.split(" ")[0]}`
+            : "Find local businesses"}
         </Text>
         <Pressable
           onPress={() => router.push("/(tabs)/search")}
@@ -101,13 +116,14 @@ export default function HomeScreen() {
 
       <ScreenState
         loading={loading}
+        loadingShimmer={<ShimmerHome />}
         error={error}
         onRetry={() => {
           setLoading(true);
           void load();
         }}
       >
-        <FlatList
+        <FlashList
           data={featured}
           keyExtractor={(item) => item.id}
           contentContainerClassName="px-5 pb-8 pt-4"
@@ -144,12 +160,7 @@ export default function HomeScreen() {
               <Text className="text-center text-ink-500">No businesses yet</Text>
             </View>
           }
-          renderItem={({ item }) => (
-            <BusinessCard
-              item={item}
-              onPress={() => router.push(`/business/${item.slug}`)}
-            />
-          )}
+          renderItem={renderFeatured}
         />
       </ScreenState>
 
