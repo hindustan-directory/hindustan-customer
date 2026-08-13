@@ -4,16 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import { Alert, FlatList, Text, View } from "react-native";
 import { AccentCard, SecondaryAction } from "../../components/customer/AccentCard";
 import { Button, ScreenState } from "../../components/ui";
+import { ShimmerList } from "../../components/Shimmer";
 import { ApiError } from "../../src/api/client";
 import { authApi } from "../../src/api/endpoints";
 import type { AuthSession } from "../../src/api/types";
 import { useAuth } from "../../src/auth/AuthProvider";
 
-function formatSessionWhen(iso: string) {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleString();
-}
+import { formatSessionWhen } from "../../src/lib/datetime";
 
 export default function SessionsScreen() {
   const { isAuthenticated, signOut } = useAuth();
@@ -105,6 +102,7 @@ export default function SessionsScreen() {
   return (
     <ScreenState
       loading={loading}
+      loadingShimmer={<ShimmerList className="px-5 py-4 pb-10" />}
       error={error}
       empty={!loading && !error && sessions.length === 0}
       emptyMessage="No active sessions"
