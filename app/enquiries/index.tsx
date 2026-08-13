@@ -9,6 +9,7 @@ import {
   ENQUIRY_STATUS_TONE,
 } from "../../components/customer/status";
 import { Button, ScreenState } from "../../components/ui";
+import { ShimmerList } from "../../components/Shimmer";
 import { ApiError } from "../../src/api/client";
 import { customerApi } from "../../src/api/endpoints";
 import type { Enquiry, EnquiryStatus } from "../../src/api/types";
@@ -113,6 +114,7 @@ export default function EnquiriesScreen() {
     <View className="flex-1 bg-ink-50">
       <ScreenState
         loading={loading}
+        loadingShimmer={<ShimmerList className="px-5 py-4 pb-4" />}
         error={error}
         empty={!loading && !error && items.length === 0}
         emptyMessage="No enquiries yet — message a business from its profile"
