@@ -5,7 +5,8 @@ import { FlatList, Pressable, RefreshControl, Text, View } from "react-native";
 import { AccentCard } from "../../components/customer/AccentCard";
 import { ListPagination } from "../../components/customer/ListPagination";
 import { ReviewEditModal } from "../../components/customer/ReviewEditModal";
-import { Button, ScreenState } from "../../components/ui";
+import { Button, IconActionButton, ScreenState } from "../../components/ui";
+import { ShimmerList } from "../../components/Shimmer";
 import { ApiError } from "../../src/api/client";
 import { customerApi } from "../../src/api/endpoints";
 import type { CustomerReview } from "../../src/api/types";
@@ -71,6 +72,7 @@ export default function MyReviewsScreen() {
     <View className="flex-1 bg-ink-50">
       <ScreenState
         loading={loading}
+        loadingShimmer={<ShimmerList className="px-5 py-4 pb-4" />}
         error={error}
         empty={!loading && !error && items.length === 0}
         emptyMessage="You have not written any reviews yet"
@@ -118,14 +120,11 @@ export default function MyReviewsScreen() {
                       <StarRow rating={item.rating} />
                     </View>
                   </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
+                  <IconActionButton
+                    icon={Pencil}
                     accessibilityLabel="Edit review"
                     onPress={() => setEditing(item)}
-                    className="rounded-full bg-brand-50 p-2 active:bg-brand-100"
-                  >
-                    <Pencil size={16} color="#2563EB" strokeWidth={2} />
-                  </Pressable>
+                  />
                 </View>
                 {item.comment ? (
                   <Text className="mt-2 text-sm text-ink-700">{item.comment}</Text>
