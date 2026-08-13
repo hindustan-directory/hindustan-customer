@@ -4,8 +4,8 @@ import { Pressable, Text, View } from "react-native";
 import { BackButton } from "../../components/BackButton";
 import { Field } from "../../components/Field";
 import { KeyboardForm } from "../../components/KeyboardForm";
-import { Button } from "../../components/ui";
-import { ApiError } from "../../src/api/client";
+import { Button, Card, GradientBox } from "../../components/ui";
+import { ApiError, API_BASE_URL } from "../../src/api/client";
 import { useAuth } from "../../src/auth/AuthProvider";
 
 export default function LoginScreen() {
@@ -30,9 +30,18 @@ export default function LoginScreen() {
           next[key] = messages[0] ?? err.message;
         }
         setFieldErrors(next);
-        setFormError(Object.keys(next).length ? null : err.message);
+        if (Object.keys(next).length) {
+          setFormError(null);
+        } else if (
+          err.code === "NETWORK" ||
+          /NoRouteToHost|Host unreachable|fetch failed/i.test(err.message)
+        ) {
+          setFormError(`Cannot reach server at ${API_BASE_URL}`);
+        } else {
+          setFormError(err.message);
+        }
       } else {
-        setFormError("Sign in failed");
+        setFormError(err instanceof Error ? err.message : "Sign in failed");
       }
     } finally {
       setLoading(false);
@@ -40,12 +49,15 @@ export default function LoginScreen() {
   }
 
   return (
-    <KeyboardForm safeTop>
-      <BackButton />
-      <Text className="text-3xl font-bold text-ink-900">Welcome back</Text>
-      <Text className="mt-2 text-base text-ink-500">Sign in to your customer account</Text>
+    <KeyboardForm safeTop className="flex-1 bg-ink-50" contentContainerClassName="pb-8">
+      <GradientBox className="px-6 pb-10 pt-2" from="#2563EB" to="#4F46E5">
+        <View className="absolute -right-8 top-0 h-32 w-32 rounded-full bg-white/10" />
+        <BackButton onDark />
+        <Text className="text-3xl font-bold text-white">Welcome back</Text>
+        <Text className="mt-2 text-base text-brand-100">Sign in to your customer account</Text>
+      </GradientBox>
 
-      <View className="mt-8">
+      <Card className="mx-6 -mt-5 px-5 py-6">
         <Field
           label="Email"
           value={email}
@@ -76,7 +88,7 @@ export default function LoginScreen() {
             </Text>
           </Pressable>
         </Link>
-      </View>
+      </Card>
     </KeyboardForm>
   );
 }

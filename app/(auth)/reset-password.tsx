@@ -1,10 +1,11 @@
 import { router, useLocalSearchParams } from "expo-router";
+import { Lock } from "lucide-react-native";
 import { useState } from "react";
 import { Text, View } from "react-native";
 import { BackButton } from "../../components/BackButton";
 import { Field } from "../../components/Field";
 import { KeyboardForm } from "../../components/KeyboardForm";
-import { Button } from "../../components/ui";
+import { Button, Card } from "../../components/ui";
 import { ApiError } from "../../src/api/client";
 import { authApi } from "../../src/api/endpoints";
 
@@ -41,28 +42,50 @@ export default function ResetPasswordScreen() {
   }
 
   return (
-    <KeyboardForm safeTop>
-      <BackButton />
-      <Text className="text-3xl font-bold text-ink-900">Reset password</Text>
-      {done ? (
-        <View className="mt-8 gap-3">
-          <Text className="text-base text-green-700">Password updated. You can sign in now.</Text>
-          <Button label="Go to sign in" onPress={() => router.replace("/(auth)/login")} />
+    <KeyboardForm
+      safeTop
+      className="flex-1 bg-ink-50"
+      contentContainerClassName="flex-grow justify-center px-5 pb-10 pt-2"
+    >
+      <View className="mb-4">
+        <BackButton />
+      </View>
+
+      <Card className="overflow-hidden p-5">
+        <View className="mb-6 items-center">
+          <View className="mb-4 h-14 w-14 items-center justify-center rounded-2xl bg-brand-600">
+            <Lock size={28} color="#FFFFFF" strokeWidth={2} />
+          </View>
+          <Text className="text-center text-2xl font-extrabold tracking-tight text-ink-900">
+            Reset password
+          </Text>
+          <Text className="mt-1.5 text-center text-sm leading-5 text-ink-500">
+            Choose a new password for your customer account
+          </Text>
         </View>
-      ) : (
-        <View className="mt-8">
-          <Field label="Reset token" value={token} onChangeText={setToken} error={fieldErrors.token} />
-          <Field
-            label="New password"
-            value={newPassword}
-            onChangeText={setNewPassword}
-            secureTextEntry
-            error={fieldErrors.newPassword}
-          />
-          {error ? <Text className="mb-3 text-sm text-red-600">{error}</Text> : null}
-          <Button label="Reset password" onPress={onSubmit} loading={loading} />
-        </View>
-      )}
+
+        {done ? (
+          <>
+            <Text className="mb-4 text-sm text-emerald-700">
+              Password updated. You can sign in now.
+            </Text>
+            <Button label="Go to sign in" onPress={() => router.replace("/(auth)/login")} />
+          </>
+        ) : (
+          <>
+            <Field label="Reset token" value={token} onChangeText={setToken} error={fieldErrors.token} />
+            <Field
+              label="New password"
+              value={newPassword}
+              onChangeText={setNewPassword}
+              secureTextEntry
+              error={fieldErrors.newPassword}
+            />
+            {error ? <Text className="mb-3 text-sm text-rose-600">{error}</Text> : null}
+            <Button label="Reset password" onPress={onSubmit} loading={loading} />
+          </>
+        )}
+      </Card>
     </KeyboardForm>
   );
 }

@@ -4,7 +4,7 @@ import { Pressable, Text, View } from "react-native";
 import { BackButton } from "../../components/BackButton";
 import { Field } from "../../components/Field";
 import { KeyboardForm } from "../../components/KeyboardForm";
-import { Button } from "../../components/ui";
+import { Button, Card, GradientBox } from "../../components/ui";
 import { ApiError } from "../../src/api/client";
 import { useAuth } from "../../src/auth/AuthProvider";
 
@@ -47,7 +47,7 @@ export default function RegisterScreen() {
         setFieldErrors(next);
         setFormError(Object.keys(next).length ? null : err.message);
       } else {
-        setFormError("Registration failed");
+        setFormError(err instanceof Error ? err.message : "Registration failed");
       }
     } finally {
       setLoading(false);
@@ -55,12 +55,14 @@ export default function RegisterScreen() {
   }
 
   return (
-    <KeyboardForm safeTop>
-      <BackButton />
-      <Text className="text-3xl font-bold text-ink-900">Create account</Text>
-      <Text className="mt-2 text-base text-ink-500">Join Hindustan Directory as a customer</Text>
+    <KeyboardForm safeTop className="flex-1 bg-ink-50" contentContainerClassName="pb-8">
+      <GradientBox className="px-6 pb-8 pt-2" from="#2563EB" to="#4F46E5">
+        <BackButton onDark />
+        <Text className="text-3xl font-bold text-white">Create account</Text>
+        <Text className="mt-2 text-base text-brand-100">Join Hindustan Directory as a customer</Text>
+      </GradientBox>
 
-      <View className="mt-8">
+      <Card className="mx-6 -mt-5 px-5 py-6">
         <Field label="Full name" value={fullName} onChangeText={setFullName} autoCapitalize="words" error={fieldErrors.fullName} />
         <Field label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" error={fieldErrors.email} />
         <Field label="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" error={fieldErrors.phone} />
@@ -97,7 +99,7 @@ export default function RegisterScreen() {
             </Text>
           </Pressable>
         </Link>
-      </View>
+      </Card>
     </KeyboardForm>
   );
 }
