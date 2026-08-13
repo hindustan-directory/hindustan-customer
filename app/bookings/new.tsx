@@ -5,6 +5,7 @@ import { Pressable, Text, View } from "react-native";
 import { Field } from "../../components/Field";
 import { KeyboardForm } from "../../components/KeyboardForm";
 import { Button, ScreenState } from "../../components/ui";
+import { ShimmerSlots } from "../../components/Shimmer";
 import { ApiError } from "../../src/api/client";
 import { bookingsApi } from "../../src/api/endpoints";
 import type { AvailabilitySlot } from "../../src/api/types";
@@ -92,6 +93,7 @@ export default function NewBookingScreen() {
 
       <ScreenState
         loading={loading}
+        loadingShimmer={<ShimmerSlots />}
         error={error}
         empty={!loading && slots.length === 0}
         emptyMessage="No slots for this date"

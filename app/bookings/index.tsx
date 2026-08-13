@@ -16,6 +16,7 @@ import {
   BOOKING_STATUS_TONE,
 } from "../../components/customer/status";
 import { Button, ScreenState } from "../../components/ui";
+import { ShimmerList } from "../../components/Shimmer";
 import { ApiError } from "../../src/api/client";
 import { bookingsApi } from "../../src/api/endpoints";
 import type { Booking } from "../../src/api/types";
@@ -133,6 +134,7 @@ export default function BookingsListScreen() {
 
       <ScreenState
         loading={loading}
+        loadingShimmer={<ShimmerList className="px-5 py-4 pb-4" />}
         error={error}
         empty={!loading && !error && visibleItems.length === 0}
         emptyMessage={
