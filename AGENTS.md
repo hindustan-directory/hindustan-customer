@@ -14,13 +14,23 @@ This app is the **customer** panel for Hindustan Directory.
 
 Sibling vendor app: `../Hindustan` (`role: "vendor"`).
 
+**Start here:** [`docs/CODEBASE.md`](docs/CODEBASE.md) — full code map and feature context for agents.
+
+Recent refactors: [`CHANGES_SUMMARY.md`](CHANGES_SUMMARY.md).
+
+# UI conventions (customer)
+
+- **Bottom sheets** → `SheetModal` (`components/customer/SheetModal.tsx`) — full-screen dim, white panel to bottom.
+- **4+ options** → `FormSelectSheet` in `components/customer/FilterList.tsx` (parity with vendor).
+- **Home greeting** → `timeGreeting()` from `src/lib/datetime.ts`.
+
 # Backend API (contract — must integrate)
 
 **Always read** [`docs/API_INTEGRATION_GUIDE.md`](docs/API_INTEGRATION_GUIDE.md) before implementing any API call, auth, or screen that talks to the backend.
 
 Rules for this mobile app:
 - Treat Request/Response blocks as ground truth — **do not invent fields**.
-- Base URL: `EXPO_PUBLIC_API_BASE_URL` (default live staging `http://13.204.231.151/api/v1`; override in `.env` for local LAN dev).
+- Base URL: `EXPO_PUBLIC_API_BASE_URL` (default `https://13.204.231.151/api/v1`; release builds reject `http://`; override in `.env` for local LAN dev).
 - Envelope: `{ success, data }` / `{ success: false, error }` — always read `data`.
 - Auth: Bearer access token; refresh tokens **rotate** — serialize refresh; store refresh in secure storage (key `hd_customer_refresh_token`).
 - Login is panel-scoped: hardcode `role: "customer"`.
