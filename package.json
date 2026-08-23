@@ -44,7 +44,8 @@
     "selfcheck": "npx tsx components/KeyboardForm.selfcheck.ts && npx tsx src/api/client.selfcheck.ts && npx tsx src/api/baseUrl.selfcheck.ts",
     "prebuild:android": "expo prebuild --platform android --clean",
     "build:apk": "./build-apk.sh",
-    "build:aab": "./build-production.sh"
+    "build:aab": "./build-production.sh",
+    "build:debug": "./build-debug-apk.sh"
   },
   "private": true,
   "overrides": {
