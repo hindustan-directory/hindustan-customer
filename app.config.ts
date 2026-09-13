@@ -1,7 +1,6 @@
 import type { ExpoConfig, ConfigContext } from "expo/config";
 
 const version = "1.0.0";
-const allowCleartext = process.env.EXPO_PUBLIC_ALLOW_CLEARTEXT === "true";
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
@@ -35,6 +34,16 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     "expo-router",
     "expo-secure-store",
+    "expo-notifications",
+    [
+      "expo-splash-screen",
+      {
+        image: "./assets/splash-icon.png",
+        backgroundColor: "#2563EB",
+        resizeMode: "contain",
+        imageWidth: 260,
+      },
+    ],
     "expo-image",
     [
       "expo-image-picker",
@@ -47,7 +56,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       "expo-build-properties",
       {
         android: {
-          usesCleartextTraffic: allowCleartext,
+          usesCleartextTraffic: false,
           minSdkVersion: 24,
           enableShrinkResources: true,
           enableProguardInReleaseBuilds: true,
