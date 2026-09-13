@@ -16,6 +16,7 @@ import { Button, ScreenState } from "../../components/ui";
 import { ApiError } from "../../src/api/client";
 import { directoryApi, fetchCategories } from "../../src/api/endpoints";
 import type { BusinessCategory, VendorSearchResult } from "../../src/api/types";
+import { floatingTabBarInset } from "../../src/navigation/chrome";
 
 const PAGE_SIZE = 10;
 
@@ -249,7 +250,8 @@ export default function SearchScreen() {
         <FlashList
           data={items}
           keyExtractor={(item) => item.id}
-          contentContainerClassName="px-5 py-4 pb-4"
+          contentContainerClassName="px-5 pt-4"
+          contentContainerStyle={{ paddingBottom: floatingTabBarInset(insets.bottom) }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -266,6 +268,7 @@ export default function SearchScreen() {
           totalPages={totalPages}
           total={total}
           onPageChange={(next) => void executeSearch(next)}
+          bottomInset={floatingTabBarInset(insets.bottom)}
         />
       </ScreenState>
     </View>

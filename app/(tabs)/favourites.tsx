@@ -11,6 +11,7 @@ import { ApiError } from "../../src/api/client";
 import { customerApi } from "../../src/api/endpoints";
 import type { FavouriteRow } from "../../src/api/types";
 import { useAuth } from "../../src/auth/AuthProvider";
+import { floatingTabBarInset } from "../../src/navigation/chrome";
 
 export default function FavouritesScreen() {
   const insets = useSafeAreaInsets();
@@ -109,7 +110,8 @@ export default function FavouritesScreen() {
         <FlatList
           data={items}
           keyExtractor={(item) => item.vendor.id}
-          contentContainerClassName="px-5 pb-8 pt-4"
+          contentContainerClassName="px-5 pt-4"
+          contentContainerStyle={{ paddingBottom: floatingTabBarInset(insets.bottom) }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

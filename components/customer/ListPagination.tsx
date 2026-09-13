@@ -6,13 +6,18 @@ type Props = {
   totalPages: number;
   total: number;
   onPageChange: (page: number) => void;
+  /** Extra bottom padding so the bar clears a floating tab bar when rendered outside the scroll. */
+  bottomInset?: number;
 };
 
-export function ListPagination({ page, totalPages, total, onPageChange }: Props) {
+export function ListPagination({ page, totalPages, total, onPageChange, bottomInset }: Props) {
   if (totalPages <= 1) return null;
 
   return (
-    <View className="flex-row items-center justify-between border-t border-ink-100 bg-white px-5 py-3">
+    <View
+      style={bottomInset ? { paddingBottom: bottomInset } : undefined}
+      className="flex-row items-center justify-between border-t border-ink-100 bg-white px-5 py-3"
+    >
       <Pressable
         accessibilityRole="button"
         disabled={page <= 1}
