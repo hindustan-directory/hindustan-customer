@@ -8,5 +8,7 @@ export function openWhatsApp(number: string) {
 }
 
 export function openTel(phone: string) {
-  openSafeExternalUrl(`tel:${phone}`);
+  // Strip to digits and `+` only before building the URI, mirroring the
+  // WhatsApp sanitization in `whatsAppUrl` — keeps `tel:` well-formed.
+  openSafeExternalUrl(`tel:${phone.replace(/[^\d+]/g, "")}`);
 }
