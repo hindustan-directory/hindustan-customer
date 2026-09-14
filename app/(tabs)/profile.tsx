@@ -20,6 +20,8 @@ import { AccentAvatar } from "../../components/customer/AccentCard";
 import { accentFor } from "../../components/customer/accent";
 import { Button } from "../../components/ui";
 import { useAuth } from "../../src/auth/AuthProvider";
+import { useUnreadNotifications } from "../../src/hooks/useUnreadNotifications";
+import { floatingTabBarInset } from "../../src/navigation/chrome";
 
 type SettingLink = {
   label: string;
@@ -111,7 +113,7 @@ const SECTIONS: { title: string; links: SettingLink[] }[] = [
   },
 ];
 
-function SettingRow({ link }: { link: SettingLink }) {
+function SettingRow({ link, badge = 0 }: { link: SettingLink; badge?: number }) {
   const accent = accentFor(link.accentKey);
   const Icon = link.icon;
 
@@ -127,6 +129,13 @@ function SettingRow({ link }: { link: SettingLink }) {
         <Text className="text-base font-semibold text-ink-900">{link.label}</Text>
         <Text className="mt-0.5 text-xs text-ink-500">{link.description}</Text>
       </View>
+      {badge > 0 ? (
+        <View className="min-w-[20px] items-center justify-center rounded-full bg-brand-600 px-1.5 py-0.5">
+          <Text className="text-[11px] font-bold text-white">
+            {badge > 99 ? "99+" : badge}
+          </Text>
+        </View>
+      ) : null}
       <ChevronRight size={18} color="#94A3B8" strokeWidth={2} />
     </Pressable>
   );
@@ -136,10 +145,12 @@ function SettingSection({
   title,
   links,
   isAuthenticated,
+  badges,
 }: {
   title: string;
   links: SettingLink[];
   isAuthenticated: boolean;
+  badges: Record<string, number>;
 }) {
   const visible = links.filter((link) => !link.auth || isAuthenticated);
   if (visible.length === 0) return null;
@@ -153,7 +164,7 @@ function SettingSection({
         {visible.map((link, index) => (
           <View key={link.href}>
             {index > 0 ? <View className="mx-4 border-t border-ink-100" /> : null}
-            <SettingRow link={link} />
+            <SettingRow link={link} badge={badges[link.href] ?? 0} />
           </View>
         ))}
       </View>
@@ -164,13 +175,14 @@ function SettingSection({
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { user, isAuthenticated, signOut } = useAuth();
+  const { count: unreadNotifications } = useUnreadNotifications();
   const profileAccent = accentFor(user?.email ?? "guest");
-  const tabBarOffset = 56 + Math.max(insets.bottom, 10);
+  const badges = { "/notifications": unreadNotifications };
 
   return (
     <ScrollView
       className="flex-1 bg-ink-50"
-      contentContainerStyle={{ paddingBottom: tabBarOffset + 8 }}
+      contentContainerStyle={{ paddingBottom: floatingTabBarInset(insets.bottom) }}
       style={{ paddingTop: insets.top }}
     >
       <Text className="px-5 pt-3 text-2xl font-bold text-ink-900">Profile</Text>
@@ -230,6 +242,7 @@ export default function ProfileScreen() {
             title={section.title}
             links={section.links}
             isAuthenticated={isAuthenticated}
+            badges={badges}
           />
         ))}
 
