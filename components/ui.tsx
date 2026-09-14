@@ -42,7 +42,7 @@ export function Button({
   iconFilled,
   iconNode,
 }: Props) {
-  const base = "flex-row items-center justify-center gap-2 rounded-xl px-4 py-3.5";
+  const base = "min-h-11 flex-row items-center justify-center gap-2 rounded-full px-5 py-3.5";
   const variants = {
     primary: "bg-brand-600 active:bg-brand-700",
     secondary: "bg-brand-100 active:bg-brand-200",
@@ -124,7 +124,7 @@ export function Card({
 }) {
   return (
     <View
-      className={`rounded-2xl border border-ink-100 bg-white shadow-sm shadow-ink-900/5 ${className}`}
+      className={`rounded-3xl border border-ink-100 bg-white shadow-sm shadow-ink-900/5 ${className}`}
     >
       {children}
     </View>
