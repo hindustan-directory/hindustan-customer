@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { Building2, Search, Tag } from "lucide-react-native";
+import { Bell, Building2, Search, Tag } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FlashList } from "@shopify/flash-list";
 import {
@@ -22,11 +22,14 @@ import { ApiError } from "../../src/api/client";
 import { directoryApi, fetchCategories } from "../../src/api/endpoints";
 import type { BusinessCategory, VendorSearchResult } from "../../src/api/types";
 import { useAuth } from "../../src/auth/AuthProvider";
+import { useUnreadNotifications } from "../../src/hooks/useUnreadNotifications";
 import { timeGreeting } from "../../src/lib/datetime";
+import { floatingTabBarInset } from "../../src/navigation/chrome";
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { count: unreadCount } = useUnreadNotifications();
   const [query, setQuery] = useState("");
   const [categories, setCategories] = useState<BusinessCategory[]>([]);
   const [featured, setFeatured] = useState<VendorSearchResult[]>([]);
@@ -87,14 +90,33 @@ export default function HomeScreen() {
   );
 
   return (
-    <View className="flex-1 bg-ink-50" style={{ paddingTop: insets.top }}>
-      <View className="bg-brand-600 px-5 pb-5 pt-3">
-        <Text className="text-sm text-brand-100">Hindustan Directory</Text>
-        <Text className="mt-1 text-2xl font-bold text-white">
-          {user
-            ? `${timeGreeting()}, ${user.fullName.split(" ")[0]}`
-            : "Find local businesses"}
-        </Text>
+    <View className="flex-1 bg-ink-50">
+      <View className="bg-brand-600 px-5 pb-5" style={{ paddingTop: insets.top + 12 }}>
+        <View className="flex-row items-start justify-between">
+          <View className="flex-1">
+            <Text className="text-sm text-brand-100">Hindustan Directory</Text>
+            <Text className="mt-1 text-2xl font-bold text-white">
+              {user
+                ? `${timeGreeting()}, ${user.fullName.split(" ")[0]}`
+                : "Find local businesses"}
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => router.push("/notifications")}
+            accessibilityRole="button"
+            accessibilityLabel="Notifications"
+            className="ml-3 h-10 w-10 items-center justify-center rounded-full bg-white/15 active:bg-white/25"
+          >
+            <Bell size={22} color="#FFFFFF" strokeWidth={2} />
+            {unreadCount > 0 ? (
+              <View className="absolute -right-0.5 -top-0.5 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1">
+                <Text className="text-[10px] font-bold text-white">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </Text>
+              </View>
+            ) : null}
+          </Pressable>
+        </View>
         <Pressable
           onPress={() => router.push("/(tabs)/search")}
           className="mt-4 flex-row items-center rounded-2xl bg-white px-4 py-3"
@@ -126,7 +148,8 @@ export default function HomeScreen() {
         <FlashList
           data={featured}
           keyExtractor={(item) => item.id}
-          contentContainerClassName="px-5 pb-8 pt-4"
+          contentContainerClassName="px-5 pt-4"
+          contentContainerStyle={{ paddingBottom: floatingTabBarInset(insets.bottom) }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

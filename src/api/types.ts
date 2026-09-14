@@ -308,3 +308,78 @@ export type AuthSession = {
   expiresAt: string;
   isCurrent: boolean;
 };
+
+export type NotificationChannel = "in_app" | "email" | "sms" | "whatsapp";
+
+export type NotificationDeliveryStatus = "queued" | "sent" | "failed";
+
+/** Optional deep-link target for a notification. */
+export type NotificationReferenceType =
+  | "booking"
+  | "task"
+  | "lead"
+  | "vendor"
+  | "emi_installment"
+  | "ticket"
+  | "payment";
+
+export type AppNotification = {
+  id: string;
+  userId: string;
+  type: string;
+  channel: NotificationChannel;
+  title: string;
+  body: string | null;
+  isRead: boolean;
+  sentAt: string | null;
+  deliveryStatus: NotificationDeliveryStatus;
+  deliveryAttempts: number;
+  referenceType: string | null;
+  referenceId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TicketPriority = "low" | "medium" | "high";
+
+export type TicketStatus =
+  | "open"
+  | "in_progress"
+  | "waiting_on_customer"
+  | "resolved"
+  | "closed";
+
+export type TicketParty = {
+  id: string;
+  fullName: string;
+  role: string;
+};
+
+export type Ticket = {
+  id: string;
+  ticketNo: number;
+  raisedById: string;
+  vendorId: string | null;
+  subject: string;
+  description: string;
+  priority: TicketPriority;
+  status: TicketStatus;
+  assignedToId: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  raisedBy?: TicketParty;
+  assignedTo?: TicketParty | null;
+  vendor?: { id: string; slug: string; businessName: string } | null;
+};
+
+export type TicketNote = {
+  id: string;
+  ticketId: string;
+  authorId: string;
+  note: string;
+  isInternal: boolean;
+  createdAt: string;
+  updatedAt: string;
+  author?: TicketParty;
+};

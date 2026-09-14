@@ -1,5 +1,6 @@
 import { apiRequest, apiUpload, imageFormFile } from "./client";
 import type {
+  AppNotification,
   AuthResult,
   AuthSession,
   AvailabilitySlot,
@@ -13,6 +14,10 @@ import type {
   CustomerReview,
   PublicUser,
   ReportReason,
+  Ticket,
+  TicketNote,
+  TicketPriority,
+  TicketStatus,
   Vendor,
   VendorSearchResult,
 } from "./types";
@@ -206,6 +211,96 @@ export const customerApi = {
       auth: true,
       body,
     });
+  },
+};
+
+export const notificationsApi = {
+  /** In-app inbox, newest first. `isRead` filters read/unread. */
+  list(params?: { isRead?: boolean; page?: number; pageSize?: number }) {
+    return apiRequest<Paginated<AppNotification>>("/notifications", {
+      auth: true,
+      query: {
+        channel: "in_app",
+        isRead: params?.isRead === undefined ? undefined : String(params.isRead),
+        page: params?.page,
+        pageSize: params?.pageSize,
+      },
+    });
+  },
+  unreadCount() {
+    return apiRequest<{ count: number }>("/notifications/unread-count", {
+      auth: true,
+    });
+  },
+  markRead(id: string) {
+    return apiRequest<AppNotification>(
+      `/notifications/${encodeURIComponent(id)}/read`,
+      { method: "PATCH", auth: true },
+    );
+  },
+  markAllRead() {
+    return apiRequest<{ count: number }>("/notifications/read-all", {
+      method: "PATCH",
+      auth: true,
+    });
+  },
+  /** Register this device's push token. Idempotent server-side. */
+  registerDevice(input: {
+    token: string;
+    platform: "android" | "ios";
+    deviceName?: string;
+  }) {
+    return apiRequest<{ id: string; platform: string; registered: true }>(
+      "/notifications/devices",
+      { method: "POST", auth: true, body: input },
+    );
+  },
+  /** Remove this device's push registration (on logout). Token sent in the body. */
+  unregisterDevice(token: string) {
+    return apiRequest<{ unregistered: true }>("/notifications/devices", {
+      method: "DELETE",
+      auth: true,
+      body: { token },
+    });
+  },
+};
+
+export const ticketsApi = {
+  create(body: { subject: string; description: string; priority?: TicketPriority }) {
+    return apiRequest<Ticket>("/tickets", {
+      method: "POST",
+      auth: true,
+      body,
+    });
+  },
+  /** Caller's own tickets. */
+  listMine(params?: { status?: TicketStatus; page?: number; pageSize?: number }) {
+    return apiRequest<Paginated<Ticket>>("/tickets/my", {
+      auth: true,
+      query: {
+        status: params?.status,
+        page: params?.page,
+        pageSize: params?.pageSize,
+      },
+    });
+  },
+  get(id: string) {
+    return apiRequest<Ticket>(`/tickets/${encodeURIComponent(id)}`, {
+      auth: true,
+    });
+  },
+  /** Conversation notes, oldest-first. */
+  listNotes(id: string, params?: { page?: number; pageSize?: number }) {
+    return apiRequest<Paginated<TicketNote>>(
+      `/tickets/${encodeURIComponent(id)}/notes`,
+      { auth: true, query: { page: params?.page, pageSize: params?.pageSize } },
+    );
+  },
+  addNote(id: string, note: string) {
+    return apiRequest<TicketNote>(
+      `/tickets/${encodeURIComponent(id)}/notes`,
+      { method: "POST", auth: true, body: { note } },
+    );
   },
 };
 
