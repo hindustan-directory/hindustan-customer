@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { Calendar, Clock } from "lucide-react-native";
-import { useCallback, useEffect, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { Field } from "../../components/Field";
 import { KeyboardForm } from "../../components/KeyboardForm";
 import { Button, ScreenState } from "../../components/ui";
@@ -11,9 +11,12 @@ import { bookingsApi } from "../../src/api/endpoints";
 import type { AvailabilitySlot } from "../../src/api/types";
 import { useAuth } from "../../src/auth/AuthProvider";
 
+function localIso(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function todayIso() {
-  const d = new Date();
-  return d.toISOString().slice(0, 10);
+  return localIso(new Date());
 }
 
 export default function NewBookingScreen() {
@@ -26,6 +29,22 @@ export default function NewBookingScreen() {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Next 30 selectable days for the horizontal date picker.
+  const dateOptions = useMemo(() => {
+    const base = new Date();
+    base.setHours(0, 0, 0, 0);
+    return Array.from({ length: 30 }, (_, i) => {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+      return {
+        iso: localIso(d),
+        weekday: d.toLocaleDateString(undefined, { weekday: "short" }),
+        day: String(d.getDate()),
+        month: d.toLocaleDateString(undefined, { month: "short" }),
+      };
+    });
+  }, []);
 
   const loadSlots = useCallback(async () => {
     if (!vendorId || !isAuthenticated) return;
@@ -84,11 +103,36 @@ export default function NewBookingScreen() {
       contentContainerClassName="px-5 py-4 pb-10"
     >
       <Text className="text-lg font-semibold text-ink-900">{name ?? "Book appointment"}</Text>
-      <View className="mt-4 overflow-hidden rounded-3xl border border-ink-100 bg-white shadow-sm">
-        <View className="px-4 py-4">
-          <Field label="Date (YYYY-MM-DD)" value={date} onChangeText={setDate} />
-          <Button label="Load slots" variant="secondary" onPress={() => void loadSlots()} />
-        </View>
+      <View className="mt-4">
+        <Text className="mb-2 text-sm font-semibold text-ink-700">Select a date</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerClassName="gap-2 pr-4"
+        >
+          {dateOptions.map((d) => {
+            const active = d.iso === date;
+            return (
+              <Pressable
+                key={d.iso}
+                onPress={() => setDate(d.iso)}
+                className={`w-[60px] items-center rounded-2xl border px-2 py-3 ${
+                  active ? "border-brand-600 bg-brand-600" : "border-ink-100 bg-white"
+                }`}
+              >
+                <Text className={`text-xs font-medium ${active ? "text-brand-100" : "text-ink-500"}`}>
+                  {d.weekday}
+                </Text>
+                <Text className={`text-xl font-bold ${active ? "text-white" : "text-ink-900"}`}>
+                  {d.day}
+                </Text>
+                <Text className={`text-xs ${active ? "text-brand-100" : "text-ink-500"}`}>
+                  {d.month}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
       </View>
 
       <ScreenState
