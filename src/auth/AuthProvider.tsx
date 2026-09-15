@@ -16,6 +16,10 @@ import {
   setOnSessionExpired,
 } from "../api/client";
 import type { PublicUser } from "../api/types";
+import {
+  registerPushTokenAsync,
+  unregisterPushTokenAsync,
+} from "../push/pushNotifications";
 
 type AuthContextValue = {
   user: PublicUser | null;
@@ -96,7 +100,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await clearSession();
           return;
         }
-        if (!cancelled) setUser(me);
+        if (!cancelled) {
+          setUser(me);
+          void registerPushTokenAsync();
+        }
       } catch {
         if (!cancelled) await clearSession();
       } finally {
@@ -111,6 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = useCallback(async (email: string, password: string) => {
     const result = await authApi.login(email, password);
     setUser(await applyAuthResult(result));
+    void registerPushTokenAsync();
   }, []);
 
   const register = useCallback(
@@ -125,6 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }) => {
       const result = await authApi.registerCustomer(input);
       setUser(await applyAuthResult(result));
+      void registerPushTokenAsync();
     },
     [],
   );
@@ -136,6 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // clear local session anyway
     }
+    await unregisterPushTokenAsync();
     await clearSession();
   }, [clearSession, user]);
 
