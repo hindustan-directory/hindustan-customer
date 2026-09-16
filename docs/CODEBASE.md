@@ -58,12 +58,17 @@ Other docs: [`API_INTEGRATION_GUIDE.md`](API_INTEGRATION_GUIDE.md), [`../CHANGES
 | Change password | `profile/change-password` | `authApi.changePassword` |
 | Sessions | `profile/sessions` | `authApi.listSessions` |
 
-### Placeholder / future
+### Notifications & support (live)
 
 | Route | Status |
 |-------|--------|
-| `support.tsx` | Static / local UX — no backend §18 yet |
-| `notifications.tsx` | Placeholder — no read/push API in guide yet |
+| `notifications.tsx` | ✅ In-app inbox — `notificationsApi` (list, unread-count, read, read-all). Unread badge on profile row via `useUnreadNotifications` (focus-refresh). |
+| `support/index.tsx` | ✅ Support hub — My Tickets list (`ticketsApi.listMine`) + "Raise a ticket" |
+| `support/new.tsx` | ✅ Create ticket form (subject, description, priority chips) — `ticketsApi.create` |
+| `support/[id].tsx` | ✅ Ticket detail + notes conversation + reply composer — `ticketsApi.get/listNotes/addNote`. Status is read-only (staff-only to change). |
+
+> Notifications + Support/Tickets are **live** (endpoints mounted at `/notifications` and `/tickets`).
+> Still a real gap: **push notifications / device registration (M3)** — not built.
 
 ---
 
@@ -139,8 +144,8 @@ Hindustan-Customer/
 │   ├── enquiries/index.tsx
 │   ├── reviews/index.tsx
 │   ├── profile/                    # edit, change-password, sessions
-│   ├── support.tsx                 # placeholder
-│   └── notifications.tsx           # placeholder
+│   ├── support/                    # index (my tickets), new (raise), [id] (detail + notes)
+│   └── notifications.tsx           # in-app inbox
 │
 ├── components/
 │   ├── ui.tsx                      # Button (+ iconNode), Card, ScreenState
@@ -196,8 +201,10 @@ Hindustan-Customer/
 | `/enquiries` | `app/enquiries/index.tsx` | Yes | AccentCard list |
 | `/reviews` | `app/reviews/index.tsx` | Yes | Customer reviews |
 | `/profile/*` | `app/profile/*.tsx` | Yes | Account |
-| `/support` | `app/support.tsx` | — | Static |
-| `/notifications` | `app/notifications.tsx` | — | Placeholder |
+| `/support` | `app/support/index.tsx` | Yes | My tickets + raise |
+| `/support/new` | `app/support/new.tsx` | Yes | Create ticket |
+| `/support/[id]` | `app/support/[id].tsx` | Yes | Ticket detail + notes |
+| `/notifications` | `app/notifications.tsx` | Yes | In-app inbox |
 
 ---
 
@@ -210,6 +217,8 @@ Hindustan-Customer/
 | `directoryApi` | **Public** | `search`, `featured`, `business(slug)`, categories |
 | `customerApi` | **Customer auth** | favourites, enquiries, reviews, report |
 | `bookingsApi` | **Customer auth** | list/create/cancel bookings, available slots |
+| `notificationsApi` | **Auth** | `list` (in_app), `unreadCount`, `markRead`, `markAllRead` |
+| `ticketsApi` | **Customer auth** | `create`, `listMine`, `get`, `listNotes`, `addNote` (customer can create/view own/reply — status is staff-only) |
 
 **Do not call** vendor routes (`/vendors/me`, `/leads`, `/inventory`, vendor booking **request** management).
 
@@ -320,7 +329,7 @@ Screens with **custom icon** empty states (enquiries, bookings, etc.) use inline
 ### Don't
 
 - Call vendor-panel endpoints from this app.
-- Implement full notifications/support until backend §18 exists.
+- Build **push notifications / device registration** — still a real M3 gap. (In-app notifications & support/tickets are **live** — see the Notifications & support section; the old "§18 not built" note is obsolete.)
 - Use `http://` API URL in release builds.
 - Duplicate `BusinessHeader` logic on other screens — import the component.
 

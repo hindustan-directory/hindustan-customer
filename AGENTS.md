@@ -35,5 +35,5 @@ Rules for this mobile app:
 - Auth: Bearer access token; refresh tokens **rotate** — serialize refresh; store refresh in secure storage (key `hd_customer_refresh_token`).
 - Login is panel-scoped: hardcode `role: "customer"`.
 - Public directory endpoints (`/directory/*`) need **no auth**.
-- Do not build against gaps in §18 (notifications read API, push, accounts, support) until those endpoints exist.
+- Notifications (in-app) and Support/Tickets are **live** — implemented in `app/notifications.tsx` and `app/support/*` via `notificationsApi`/`ticketsApi`. (The bundled API guide §18 "do not build" note is outdated.) **Push device-token registration is now implemented too** — `src/push/pushNotifications.ts` (`notificationsApi.registerDevice`/`unregisterDevice` → `/notifications/devices`), wired into `AuthProvider`; best-effort, no-ops in Expo Go / without an EAS `projectId`. Push **delivery** is still backend/infra-pending.
 - Do not call vendor-only routes (`/vendors/me`, `/inventory`, `/leads`, vendor booking management).

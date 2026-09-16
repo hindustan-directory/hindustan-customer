@@ -39,28 +39,41 @@ Refresh token key: `hd_customer_refresh_token` (secure storage).
 | `npm run selfcheck` | Runtime checks (API client, base URL) |
 | `./node_modules/.bin/tsc --noEmit` | Typecheck |
 
-## Android release builds
+## Android APK (share with colleagues — same as vendor app)
 
-1. Copy `.env.example` → `.env` and set release signing vars.
-2. Place `hindustan-customer-release-key.keystore` in the project root (gitignored).
-3. Run:
+Same flow as `../Hindustan`: `./build-apk.sh` → `assembleRelease` → Desktop. No release keystore needed (Expo debug signing for sideload).
 
 ```bash
-chmod +x build-apk.sh build-production.sh   # first time only
-./build-apk.sh          # signed release APK → ~/Desktop
-./build-production.sh   # signed release AAB → ~/Desktop (Google Play)
+# For http:// staging API, also add to .env:
+EXPO_PUBLIC_ALLOW_CLEARTEXT=true
+
+chmod +x build-apk.sh   # first time only
+./build-apk.sh           # or: npm run build:apk
 ```
 
-Or via npm:
+Output: `~/Desktop/HindustanCustomer-v{version}-Release.apk`
+
+Gradle deprecation warnings from `node_modules` (reanimated, expo, etc.) are normal — **BUILD SUCCESSFUL** is what matters.
+
+## Play Store AAB (production signing)
+
+Requires release keystore + signing env vars in `.env`:
 
 ```bash
-npm run build:apk
-npm run build:aab
+./build-production.sh   # or: npm run build:aab
 ```
 
-Each script runs `expo prebuild`, injects signing config, then Gradle `assembleRelease` / `bundleRelease`. Output: `HindustanCustomer-v{version}-Release.apk` or `…-PlayStore.aab` on the Desktop.
+Output: `~/Desktop/HindustanCustomer-v{version}-PlayStore.aab`
 
-Requires Android SDK (`ANDROID_HOME` or `~/Library/Android/sdk`). Set `EXPO_PUBLIC_API_BASE_URL_PROD` in `.env` for release API URL override.
+## Android debug APK (optional)
+
+Faster debug-signed build if release sideload has issues:
+
+```bash
+./build-debug-apk.sh    # or: npm run build:debug
+```
+
+Output: `~/Desktop/HindustanCustomer-v{version}-Debug.apk`
 
 ## Project layout (high level)
 
