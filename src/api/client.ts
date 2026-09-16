@@ -236,6 +236,31 @@ export function imageFormFile(uri: string, filename = "upload.jpg") {
   return { uri, name: filename, type };
 }
 
+/**
+ * Multipart uploads go through XMLHttpRequest, not fetch. RN's WHATWG `fetch`
+ * FormData rejects React Native's `{ uri, name, type }` file parts with
+ * "Unsupported FormDataPart implementation"; XHR uses the native multipart path
+ * that supports them. Never set Content-Type — XHR adds the boundary itself.
+ */
+function sendMultipart(
+  url: string,
+  formData: FormData,
+  headers: Record<string, string>,
+): Promise<{ status: number; body: string }> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    xhr.timeout = REQUEST_TIMEOUT_MS;
+    for (const [key, value] of Object.entries(headers)) {
+      xhr.setRequestHeader(key, value);
+    }
+    xhr.onload = () => resolve({ status: xhr.status, body: xhr.responseText ?? "" });
+    xhr.onerror = () => reject(new Error("Network request failed"));
+    xhr.ontimeout = () => reject(new Error("Upload timed out"));
+    xhr.send(formData);
+  });
+}
+
 export async function apiUpload<T>(
   path: string,
   formData: FormData,
@@ -245,9 +270,6 @@ export async function apiUpload<T>(
 
   let attempt = 0;
   while (true) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
     try {
       const headers: Record<string, string> = {
         Accept: "application/json",
@@ -256,22 +278,17 @@ export async function apiUpload<T>(
         headers.Authorization = `Bearer ${accessToken}`;
       }
 
-      const response = await fetch(buildUrl(path), {
-        method: "POST",
-        headers,
-        body: formData,
-        signal: controller.signal,
-      });
+      const { status, body } = await sendMultipart(buildUrl(path), formData, headers);
 
       let envelope: ApiEnvelope<T> | null = null;
       try {
-        envelope = (await response.json()) as ApiEnvelope<T>;
+        envelope = JSON.parse(body) as ApiEnvelope<T>;
       } catch {
         envelope = null;
       }
 
       if (
-        response.status === 401 &&
+        status === 401 &&
         auth &&
         !skipRefresh &&
         envelope &&
@@ -286,29 +303,24 @@ export async function apiUpload<T>(
       }
 
       if (!envelope || typeof envelope.success !== "boolean") {
-        if (isTransientStatus(response.status) && attempt < MAX_TRANSIENT_RETRIES) {
+        if (isTransientStatus(status) && attempt < MAX_TRANSIENT_RETRIES) {
           attempt += 1;
           await sleep(200 * 2 ** attempt + Math.random() * 100);
           continue;
         }
-        throw new ApiError(response.status, {
+        throw new ApiError(status, {
           code: "INTERNAL",
-          message: `Unexpected response (${response.status})`,
+          message: `Unexpected response (${status})`,
         });
       }
 
       if (!envelope.success) {
-        if (isTransientStatus(response.status) && attempt < MAX_TRANSIENT_RETRIES) {
+        if (isTransientStatus(status) && attempt < MAX_TRANSIENT_RETRIES) {
           attempt += 1;
-          const retryAfter = Number(response.headers.get("Retry-After"));
-          await sleep(
-            Number.isFinite(retryAfter) && retryAfter > 0
-              ? retryAfter * 1000
-              : 200 * 2 ** attempt + Math.random() * 100,
-          );
+          await sleep(200 * 2 ** attempt + Math.random() * 100);
           continue;
         }
-        throw new ApiError(response.status, envelope.error);
+        throw new ApiError(status, envelope.error);
       }
 
       return envelope.data;
@@ -321,10 +333,8 @@ export async function apiUpload<T>(
       }
       throw new ApiError(0, {
         code: "NETWORK",
-        message: err instanceof Error ? err.message : "Network request failed",
+        message: err instanceof Error ? err.message : "Upload failed",
       });
-    } finally {
-      clearTimeout(timer);
     }
   }
 }
