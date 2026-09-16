@@ -1,5 +1,6 @@
 import "react-native-gesture-handler";
 import "../global.css";
+import "../src/lib/setupImage";
 import { Stack } from "expo-router";
 import type { ErrorBoundaryProps } from "expo-router";
 import { StatusBar } from "expo-status-bar";
