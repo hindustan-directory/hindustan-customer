@@ -4,10 +4,10 @@ import {
   Modal,
   Platform,
   Pressable,
-  ScrollView,
   Text,
   View,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Props = {
@@ -35,14 +35,21 @@ export function SheetModal({ visible, title, onClose, children }: Props) {
           >
             <View className="mb-3 h-1 w-10 self-center rounded-full bg-ink-200" />
             <Text className="mb-4 text-lg font-bold text-ink-900">{title}</Text>
-            <ScrollView
+            <KeyboardAwareScrollView
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
               bounces={false}
               nestedScrollEnabled
+              // Sheet tuning (mirrors <KeyboardForm sheet>): the outer
+              // KeyboardAvoidingView handles Modal lift, this scrolls the
+              // focused input clear of the keyboard so lower fields stay visible.
+              enableOnAndroid={false}
+              enableAutomaticScroll
+              extraScrollHeight={12}
+              extraHeight={0}
             >
               {children}
-            </ScrollView>
+            </KeyboardAwareScrollView>
           </View>
         </KeyboardAvoidingView>
       </View>
