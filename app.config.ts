@@ -19,7 +19,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     package: "com.hindustan.directory.customer",
     versionCode: 1,
     adaptiveIcon: {
-      backgroundColor: "#2563EB",
+      backgroundColor: "#FFFFFF",
       foregroundImage: "./assets/android-icon-foreground.png",
       backgroundImage: "./assets/android-icon-background.png",
       monochromeImage: "./assets/android-icon-monochrome.png",
@@ -34,12 +34,18 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     "expo-router",
     "expo-secure-store",
-    "expo-notifications",
+    [
+      "expo-notifications",
+      {
+        icon: "./assets/notification-icon.png",
+        color: "#2563EB",
+      },
+    ],
     [
       "expo-splash-screen",
       {
         image: "./assets/splash-icon.png",
-        backgroundColor: "#2563EB",
+        backgroundColor: "#FFFFFF",
         resizeMode: "contain",
         imageWidth: 260,
       },
