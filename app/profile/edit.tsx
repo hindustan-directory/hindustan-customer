@@ -69,6 +69,8 @@ export default function EditProfileScreen() {
               source={{ uri: avatarUrl }}
               className="mb-3 h-24 w-24 rounded-full border border-ink-100 bg-ink-100"
               contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={150}
             />
           ) : (
             <View className="mb-3 h-24 w-24 items-center justify-center rounded-full border border-dashed border-ink-200 bg-ink-50">

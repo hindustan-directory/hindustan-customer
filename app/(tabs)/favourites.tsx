@@ -48,6 +48,8 @@ export default function FavouritesScreen() {
     void load();
   }, [load]);
 
+  const keyExtractor = useCallback((item: FavouriteRow) => item.vendor.id, []);
+
   async function removeFavourite(vendorId: string) {
     setRemovingId(vendorId);
     setError(null);
@@ -109,7 +111,7 @@ export default function FavouritesScreen() {
       >
         <FlatList
           data={items}
-          keyExtractor={(item) => item.vendor.id}
+          keyExtractor={keyExtractor}
           contentContainerClassName="px-5 pt-4"
           contentContainerStyle={{ paddingBottom: floatingTabBarInset(insets.bottom) }}
           refreshControl={

@@ -32,6 +32,9 @@ export const BusinessCard = memo(function BusinessCard({
                 source={{ uri: item.photoUrl }}
                 style={{ width: "100%", height: "100%" }}
                 contentFit="cover"
+                cachePolicy="memory-disk"
+                transition={150}
+                recyclingKey={item.id}
               />
             </View>
           ) : (

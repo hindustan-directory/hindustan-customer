@@ -1,5 +1,6 @@
 import { router } from "expo-router";
 import { MapPin, Star, Trash2 } from "lucide-react-native";
+import { memo } from "react";
 import { Pressable, Text, View } from "react-native";
 import { formatRating } from "../BusinessCard";
 import type { FavouriteRow } from "../../src/api/types";
@@ -12,7 +13,11 @@ type Props = {
   removing?: boolean;
 };
 
-export function SavedBusinessCard({ item, onRemove, removing }: Props) {
+export const SavedBusinessCard = memo(function SavedBusinessCard({
+  item,
+  onRemove,
+  removing,
+}: Props) {
   const { vendor } = item;
   const accentKey = vendor.categoryName || vendor.slug;
   const accent = accentFor(accentKey);
@@ -77,4 +82,4 @@ export function SavedBusinessCard({ item, onRemove, removing }: Props) {
       </View>
     </AccentCard>
   );
-}
+});

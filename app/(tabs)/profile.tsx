@@ -196,6 +196,8 @@ export default function ProfileScreen() {
                   source={{ uri: user.avatarUrl }}
                   className="mb-4 h-20 w-20 rounded-2xl border-2 border-white bg-ink-100 shadow-sm"
                   contentFit="cover"
+                  cachePolicy="memory-disk"
+                  transition={150}
                 />
               ) : (
                 <View className="mb-4">

@@ -121,6 +121,9 @@ export const BusinessHeader = memo(function BusinessHeader({
                   source={{ uri: photo.imageUrl }}
                   style={{ width: "100%", height: "100%" }}
                   contentFit="cover"
+                  cachePolicy="memory-disk"
+                  transition={150}
+                  recyclingKey={photo.id}
                 />
               </View>
             ))}

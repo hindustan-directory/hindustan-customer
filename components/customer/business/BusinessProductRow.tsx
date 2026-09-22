@@ -22,6 +22,9 @@ export const BusinessProductRow = memo(function BusinessProductRow({ item }: Pro
             source={{ uri: photoUrl }}
             className="h-16 w-16 rounded-2xl bg-ink-100"
             contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={150}
+            recyclingKey={item.id}
           />
         ) : null}
         <View className="min-w-0 flex-1">

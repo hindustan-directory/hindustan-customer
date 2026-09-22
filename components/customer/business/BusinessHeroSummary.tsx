@@ -25,7 +25,13 @@ export const BusinessHeroSummary = memo(function BusinessHeroSummary({ vendor }:
     <View className="bg-white">
       <View className="relative h-36 bg-brand-100">
         {hero ? (
-          <Image source={{ uri: hero }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+          <Image
+            source={{ uri: hero }}
+            style={{ width: "100%", height: "100%" }}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={150}
+          />
         ) : null}
         <View className="absolute inset-x-0 bottom-0 h-20 bg-black/25" />
         {vendor.logoUrl ? (
@@ -34,6 +40,8 @@ export const BusinessHeroSummary = memo(function BusinessHeroSummary({ vendor }:
               source={{ uri: vendor.logoUrl }}
               style={{ width: "100%", height: "100%" }}
               contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={150}
             />
           </View>
         ) : null}
