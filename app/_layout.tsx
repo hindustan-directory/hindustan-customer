@@ -6,6 +6,7 @@ import type { ErrorBoundaryProps } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { CircleAlert } from "lucide-react-native";
 import { Text, View } from "react-native";
+import { AlertHost } from "../components/CustomAlert";
 import { HeaderBackButton } from "../components/HeaderBackButton";
 import { Button } from "../components/ui";
 import { AuthProvider } from "../src/auth/AuthProvider";
@@ -76,6 +77,7 @@ export default function RootLayout() {
         <Stack.Screen name="support/[id]" options={pushed("Ticket")} />
         <Stack.Screen name="notifications" options={pushed("Notifications")} />
       </Stack>
+      <AlertHost />
     </AuthProvider>
   );
 }

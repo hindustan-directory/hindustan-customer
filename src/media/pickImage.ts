@@ -1,6 +1,7 @@
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
-import { Alert, Linking } from "react-native";
+import { Linking } from "react-native";
+import { showAlert } from "../../components/CustomAlert";
 
 // Cap on the longest edge (px). Downscaling to this keeps re-compressed JPEGs
 // comfortably under the server's upload limit that was triggering HTTP 413.
@@ -50,7 +51,7 @@ async function compressImage(
 export async function pickImage(): Promise<string | null> {
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (status !== "granted") {
-    Alert.alert(
+    showAlert(
       "Permission needed",
       "Allow photo library access to upload a profile photo.",
       [

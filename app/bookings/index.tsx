@@ -2,13 +2,8 @@ import { router } from "expo-router";
 import { Calendar } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Alert,
-  FlatList,
-  Pressable,
-  RefreshControl,
-  Text,
-  View,
-} from "react-native";
+  FlatList, Pressable, RefreshControl, Text, View } from "react-native";
+import { showAlert } from "../../components/CustomAlert";
 import { AccentCard, SecondaryAction } from "../../components/customer/AccentCard";
 import { ListPagination } from "../../components/customer/ListPagination";
 import {
@@ -77,7 +72,7 @@ export default function BookingsListScreen() {
   }, [items, tab, todayUtc]);
 
   function confirmCancel(booking: Booking) {
-    Alert.alert(
+    showAlert(
       "Cancel booking?",
       `${formatBookingDate(booking.bookingDate)} · ${formatSlotTime(booking.startTime)}–${formatSlotTime(booking.endTime)}`,
       [

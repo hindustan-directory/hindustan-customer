@@ -1,7 +1,8 @@
 import { router } from "expo-router";
 import { MonitorSmartphone, Shield } from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
-import { Alert, FlatList, Text, View } from "react-native";
+import { FlatList, Text, View } from "react-native";
+import { showAlert } from "../../components/CustomAlert";
 import { AccentCard, SecondaryAction } from "../../components/customer/AccentCard";
 import { Button, ScreenState } from "../../components/ui";
 import { ShimmerList } from "../../components/Shimmer";
@@ -61,7 +62,7 @@ export default function SessionsScreen() {
   }
 
   function confirmRevokeAll() {
-    Alert.alert(
+    showAlert(
       "Sign out everywhere?",
       "This revokes every device session, including this one.",
       [
