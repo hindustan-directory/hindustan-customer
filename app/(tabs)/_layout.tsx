@@ -24,7 +24,11 @@ export default function TabsLayout() {
       tabBar={(props) => <FloatingTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        animation: "shift",
+        // "shift" animates the tab swap on the JS thread and feels laggy with
+        // heavy screens; "none" makes tab switches instant.
+        animation: "none",
+        // Stop blurred tabs from re-rendering so switching stays snappy.
+        freezeOnBlur: true,
       }}
     >
       <Tabs.Screen
