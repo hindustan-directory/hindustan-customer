@@ -85,15 +85,25 @@ export default function SearchScreen() {
   }, [rating]);
 
   const executeSearch = useCallback(
-    async (searchPage: number) => {
+    async (
+      searchPage: number,
+      // Filters set via a picker land in state asynchronously, so a search
+      // fired in the same handler would still read the previous value. Callers
+      // that just changed a filter pass it here to search with the new value.
+      overrides?: { q?: string; category?: string; city?: string; rating?: number },
+    ) => {
+      const effQ = overrides?.q ?? q;
+      const effCategory = overrides?.category ?? category;
+      const effCity = overrides?.city ?? city;
+      const effRating = overrides && "rating" in overrides ? overrides.rating : rating;
       setError(null);
       setLoading(true);
       try {
         const data = await directoryApi.search({
-          q: q.trim() || undefined,
-          category: category || undefined,
-          city: city.trim() || undefined,
-          rating,
+          q: effQ.trim() || undefined,
+          category: effCategory || undefined,
+          city: effCity.trim() || undefined,
+          rating: effRating,
           page: searchPage,
           pageSize: PAGE_SIZE,
         });
@@ -121,12 +131,13 @@ export default function SearchScreen() {
 
   function selectCategory(slug: string) {
     setCategory(slug);
-    runSearch(1);
+    void executeSearch(1, { category: slug });
   }
 
   function selectRating(key: string) {
-    setRating(key ? Number(key) : undefined);
-    runSearch(1);
+    const nextRating = key ? Number(key) : undefined;
+    setRating(nextRating);
+    void executeSearch(1, { rating: nextRating });
   }
 
   const onPressBusiness = useCallback((businessSlug: string) => {
@@ -205,7 +216,7 @@ export default function SearchScreen() {
                   setCategory("");
                   setCity("");
                   setRating(undefined);
-                  runSearch(1);
+                  void executeSearch(1, { category: "", city: "", rating: undefined });
                 }}
                 className="flex-row items-center gap-1 rounded-xl border border-ink-200 bg-white px-3 py-2 active:bg-ink-50"
               >
