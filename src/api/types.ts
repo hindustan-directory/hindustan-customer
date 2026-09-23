@@ -231,6 +231,23 @@ export type Product = {
   category?: ProductCategory | null;
 };
 
+/**
+ * GET /directory/products/:id — a single public product plus a light business
+ * summary, so a shared/deep-linked product can render "from <business>" and
+ * link back without a second request. `avgRating` is a decimal string.
+ */
+export type PublicProductDetail = Product & {
+  business: {
+    id: string;
+    slug: string;
+    businessName: string;
+    city: string | null;
+    logoUrl: string | null;
+    avgRating: string;
+    reviewCount: number;
+  };
+};
+
 export type FavouriteRow = {
   favouritedAt: string;
   vendor: {

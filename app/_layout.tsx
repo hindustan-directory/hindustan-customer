@@ -65,6 +65,7 @@ export default function RootLayout() {
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="business/[slug]" options={pushed("Business")} />
+        <Stack.Screen name="product/[id]" options={pushed("Product")} />
         <Stack.Screen name="bookings/index" options={pushed("My bookings")} />
         <Stack.Screen name="bookings/new" options={pushed("Book appointment")} />
         <Stack.Screen name="enquiries/index" options={pushed("My enquiries")} />

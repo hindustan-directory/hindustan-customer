@@ -156,8 +156,10 @@ export default function BusinessDetailScreen() {
   }, [width]);
 
   const renderProduct = useCallback(
-    ({ item }: { item: Product }) => <BusinessProductRow item={item} />,
-    [],
+    ({ item }: { item: Product }) => (
+      <BusinessProductRow item={item} slug={slug} businessName={vendor?.businessName} />
+    ),
+    [slug, vendor?.businessName],
   );
 
   const renderReview = useCallback(

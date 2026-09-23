@@ -10,6 +10,7 @@ import type {
   FavouriteRow,
   Paginated,
   Product,
+  PublicProductDetail,
   PublicReview,
   CustomerReview,
   PublicUser,
@@ -135,6 +136,12 @@ export const directoryApi = {
     return apiRequest<Paginated<Product>>(
       `/directory/business/${encodeURIComponent(slug)}/products`,
       { query: params },
+    );
+  },
+  /** Single public product by id — for the product detail screen / shared links. */
+  product(id: string) {
+    return apiRequest<PublicProductDetail>(
+      `/directory/products/${encodeURIComponent(id)}`,
     );
   },
 };

@@ -1,4 +1,5 @@
 import { Image } from "expo-image";
+import { router } from "expo-router";
 import { memo } from "react";
 import { Text, View } from "react-native";
 import type { Product } from "../../../src/api/types";
@@ -6,16 +7,31 @@ import { AccentCard, AccentPill } from "../AccentCard";
 
 type Props = {
   item: Product;
+  /** Vendor slug + name, passed through so the product detail page can deep-link back. */
+  slug?: string;
+  businessName?: string;
 };
 
-export const BusinessProductRow = memo(function BusinessProductRow({ item }: Props) {
+export const BusinessProductRow = memo(function BusinessProductRow({
+  item,
+  slug,
+  businessName,
+}: Props) {
   const accentKey = item.name;
   const photoUrl = item.images?.[0]?.imageUrl;
   const priceLabel =
     item.price != null ? `₹${item.price}` : item.availability.replace(/_/g, " ");
 
   return (
-    <AccentCard className="mb-3">
+    <AccentCard
+      className="mb-3"
+      onPress={() =>
+        router.push({
+          pathname: "/product/[id]",
+          params: { id: item.id, slug, name: item.name, businessName },
+        })
+      }
+    >
       <View className="flex-row items-start gap-3">
         {photoUrl ? (
           <Image
