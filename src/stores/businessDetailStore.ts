@@ -14,6 +14,8 @@ type BusinessDetailState = {
   slug: string | null;
   tab: BusinessDetailTab;
   vendor: Vendor | null;
+  /** Last-loaded vendor per slug, kept across mounts so revisits are instant. */
+  vendorCache: Record<string, Vendor>;
   loading: boolean;
   error: string | null;
   isSaved: boolean;
@@ -41,6 +43,7 @@ const initialState = {
   slug: null as string | null,
   tab: "about" as BusinessDetailTab,
   vendor: null as Vendor | null,
+  vendorCache: {} as Record<string, Vendor>,
   loading: true,
   error: null as string | null,
   isSaved: false,
@@ -68,9 +71,13 @@ export const useBusinessDetailStore = create<BusinessDetailState>((set, get) => 
   },
 
   load: async (slug, isAuthenticated) => {
+    // Serve the cached vendor instantly (SWR): only blank to a shimmer when we
+    // have nothing for this slug yet; otherwise render it and revalidate below.
+    const cached = get().vendorCache[slug];
     set({
       slug,
-      loading: true,
+      vendor: cached ?? null,
+      loading: !cached,
       error: null,
       tab: "about",
       products: [],
@@ -82,7 +89,7 @@ export const useBusinessDetailStore = create<BusinessDetailState>((set, get) => 
     });
     try {
       const biz = await directoryApi.business(slug);
-      set({ vendor: biz });
+      set((s) => ({ vendor: biz, vendorCache: { ...s.vendorCache, [slug]: biz } }));
 
       if (isAuthenticated) {
         try {
@@ -101,7 +108,10 @@ export const useBusinessDetailStore = create<BusinessDetailState>((set, get) => 
         set({ isSaved: false, myReview: null });
       }
     } catch (err) {
-      set({ error: err instanceof ApiError ? err.message : "Business not found", vendor: null });
+      // Keep the cached vendor visible if we have one; only hard-fail a cold open.
+      if (!cached) {
+        set({ error: err instanceof ApiError ? err.message : "Business not found", vendor: null });
+      }
     } finally {
       set({ loading: false });
     }
@@ -206,5 +216,5 @@ export const useBusinessDetailStore = create<BusinessDetailState>((set, get) => 
     }
   },
 
-  reset: () => set(initialState),
+  reset: () => set((s) => ({ ...initialState, vendorCache: s.vendorCache })),
 }));

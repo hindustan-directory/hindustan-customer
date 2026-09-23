@@ -3,6 +3,7 @@ import { useLocalSearchParams, router, useNavigation } from "expo-router";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   BackHandler,
+  InteractionManager,
   Pressable,
   ScrollView,
   Text,
@@ -78,8 +79,15 @@ export default function BusinessDetailScreen() {
 
   useEffect(() => {
     if (!slug) return;
-    void load(slug, isAuthenticated);
-    return () => reset();
+    // Defer the fetch until the push animation finishes so the transition stays
+    // smooth; a cached vendor (if any) already renders instantly underneath.
+    const task = InteractionManager.runAfterInteractions(() => {
+      void load(slug, isAuthenticated);
+    });
+    return () => {
+      task.cancel();
+      reset();
+    };
   }, [slug, isAuthenticated, load, reset]);
 
   useLayoutEffect(() => {
@@ -176,6 +184,7 @@ export default function BusinessDetailScreen() {
         loading={loading}
         loadingShimmer={<ShimmerBusinessDetail />}
         error={error}
+        slowAfterMs={12000}
         onRetry={() => {
           if (slug) void load(slug, isAuthenticated);
         }}
