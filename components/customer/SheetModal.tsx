@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
-  KeyboardAvoidingView,
+  Keyboard,
   Modal,
   Platform,
   Pressable,
@@ -19,39 +19,59 @@ type Props = {
 
 export function SheetModal({ visible, title, onClose, children }: Props) {
   const insets = useSafeAreaInsets();
+  // A RN Modal is its own window on Android, so windowSoftInputMode="adjustResize"
+  // never resizes it and KeyboardAvoidingView gets no inset — the keyboard covers
+  // the sheet. Track the keyboard height ourselves and pad the sheet up by it.
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    if (!visible) {
+      setKeyboardHeight(0);
+      return;
+    }
+    const showEvt = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvt = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showSub = Keyboard.addListener(showEvt, (e) =>
+      setKeyboardHeight(e.endCoordinates.height),
+    );
+    const hideSub = Keyboard.addListener(hideEvt, () => setKeyboardHeight(0));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [visible]);
+
+  const sheetPadBottom =
+    keyboardHeight > 0 ? keyboardHeight + 12 : Math.max(insets.bottom, 16);
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View className="flex-1">
-        <Pressable className="absolute inset-0 bg-black/50" accessibilityLabel="Close" onPress={onClose} />
-        <KeyboardAvoidingView
-          className="flex-1 justify-end"
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={{ flex: 1 }}
+      <View className="flex-1 justify-end">
+        <Pressable
+          className="absolute inset-0 bg-black/50"
+          accessibilityLabel="Close"
+          onPress={onClose}
+        />
+        <View
+          className="rounded-t-2xl bg-white px-5 pt-3"
+          style={{ paddingBottom: sheetPadBottom }}
         >
-          <View
-            className="rounded-t-2xl bg-white px-5 pt-3"
-            style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+          <View className="mb-3 h-1 w-10 self-center rounded-full bg-ink-200" />
+          <Text className="mb-4 text-lg font-bold text-ink-900">{title}</Text>
+          <KeyboardAwareScrollView
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+            nestedScrollEnabled
+            // The sheet itself is lifted above the keyboard via paddingBottom;
+            // this scroll view only keeps tall content reachable. Its own
+            // keyboard handling stays off so the two don't fight.
+            enableOnAndroid={false}
+            enableAutomaticScroll={false}
           >
-            <View className="mb-3 h-1 w-10 self-center rounded-full bg-ink-200" />
-            <Text className="mb-4 text-lg font-bold text-ink-900">{title}</Text>
-            <KeyboardAwareScrollView
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-              bounces={false}
-              nestedScrollEnabled
-              // Sheet tuning (mirrors <KeyboardForm sheet>): the outer
-              // KeyboardAvoidingView handles Modal lift, this scrolls the
-              // focused input clear of the keyboard so lower fields stay visible.
-              enableOnAndroid={false}
-              enableAutomaticScroll
-              extraScrollHeight={12}
-              extraHeight={0}
-            >
-              {children}
-            </KeyboardAwareScrollView>
-          </View>
-        </KeyboardAvoidingView>
+            {children}
+          </KeyboardAwareScrollView>
+        </View>
       </View>
     </Modal>
   );
