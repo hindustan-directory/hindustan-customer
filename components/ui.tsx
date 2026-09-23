@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useId } from "react";
+import { useEffect, useId, useState } from "react";
 import type { LucideIcon } from "lucide-react-native";
 import { CircleAlert, Inbox } from "lucide-react-native";
 import {
@@ -174,6 +174,7 @@ export function ScreenState({
   emptyMessage = "Nothing here yet",
   emptyIcon: EmptyIcon = Inbox,
   onRetry,
+  slowAfterMs,
   children,
 }: {
   loading?: boolean;
@@ -183,9 +184,42 @@ export function ScreenState({
   emptyMessage?: string;
   emptyIcon?: LucideIcon;
   onRetry?: () => void;
+  /** If still loading after this many ms, swap the shimmer for a Retry button. */
+  slowAfterMs?: number;
   children: ReactNode;
 }) {
+  const [slow, setSlow] = useState(false);
+  const [retryNonce, setRetryNonce] = useState(0);
+
+  useEffect(() => {
+    if (!loading || !slowAfterMs) {
+      setSlow(false);
+      return;
+    }
+    setSlow(false);
+    const timer = setTimeout(() => setSlow(true), slowAfterMs);
+    return () => clearTimeout(timer);
+  }, [loading, slowAfterMs, retryNonce]);
+
   if (loading) {
+    if (slow && onRetry) {
+      return (
+        <View className="flex-1 items-center justify-center gap-3 px-6 py-16">
+          <CircleAlert size={36} color="#64748B" strokeWidth={1.75} />
+          <Text className="text-center text-base text-ink-700">
+            This is taking longer than usual.
+          </Text>
+          <Button
+            label="Try again"
+            onPress={() => {
+              setSlow(false);
+              setRetryNonce((n) => n + 1);
+              onRetry();
+            }}
+          />
+        </View>
+      );
+    }
     if (loadingShimmer) {
       return <View className="flex-1">{loadingShimmer}</View>;
     }

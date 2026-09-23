@@ -256,6 +256,7 @@ export default function SearchScreen() {
         empty={!loading && !error && items.length === 0}
         emptyMessage="No matches — try another search or filter"
         emptyIcon={Search}
+        slowAfterMs={12000}
         onRetry={() => void executeSearch(page)}
       >
         <FlashList
