@@ -1,71 +1,44 @@
 import { router, useFocusEffect } from "expo-router";
 import { Heart } from "lucide-react-native";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { FlatList, RefreshControl, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SavedBusinessCard } from "../../components/customer/SavedBusinessCard";
 import { ListPagination } from "../../components/customer/ListPagination";
 import { ShimmerBusinessList } from "../../components/Shimmer";
 import { Button, ScreenState } from "../../components/ui";
-import { ApiError } from "../../src/api/client";
-import { customerApi } from "../../src/api/endpoints";
 import type { FavouriteRow } from "../../src/api/types";
 import { useAuth } from "../../src/auth/AuthProvider";
 import { floatingTabBarInset } from "../../src/navigation/chrome";
+import { useFavouritesStore } from "../../src/stores/favouritesStore";
 
 export default function FavouritesScreen() {
   const insets = useSafeAreaInsets();
   const { isAuthenticated } = useAuth();
-  const [items, setItems] = useState<FavouriteRow[]>([]);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
-  const [removingId, setRemovingId] = useState<string | null>(null);
+  const items = useFavouritesStore((s) => s.items);
+  const page = useFavouritesStore((s) => s.page);
+  const totalPages = useFavouritesStore((s) => s.totalPages);
+  const total = useFavouritesStore((s) => s.total);
+  const loaded = useFavouritesStore((s) => s.loaded);
+  const loading = useFavouritesStore((s) => s.loading);
+  const refreshing = useFavouritesStore((s) => s.refreshing);
+  const error = useFavouritesStore((s) => s.error);
+  const removingId = useFavouritesStore((s) => s.removingId);
+  const load = useFavouritesStore((s) => s.load);
+  const refresh = useFavouritesStore((s) => s.refresh);
+  const setPage = useFavouritesStore((s) => s.setPage);
+  const removeFavourite = useFavouritesStore((s) => s.removeFavourite);
 
-  const load = useCallback(async () => {
-    if (!isAuthenticated) {
-      setLoading(false);
-      return;
-    }
-    setError(null);
-    try {
-      const data = await customerApi.favourites(page, 10);
-      setItems(data.items);
-      setTotalPages(data.totalPages);
-      setTotal(data.total);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not load favourites");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [isAuthenticated, page]);
-
-  // Bottom tab stays mounted, so refetch each time it regains focus — this is
-  // how a store just saved on the business detail screen shows up here.
+  // Module-level store persists across mounts: show cached favourites instantly
+  // on focus, then revalidate in the background (SWR) instead of blocking.
   useFocusEffect(
     useCallback(() => {
-      void load();
-    }, [load]),
+      if (!loaded) void load(isAuthenticated);
+      else void refresh(isAuthenticated);
+    }, [loaded, load, refresh, isAuthenticated]),
   );
 
   const keyExtractor = useCallback((item: FavouriteRow) => item.vendor.id, []);
-
-  async function removeFavourite(vendorId: string) {
-    setRemovingId(vendorId);
-    setError(null);
-    try {
-      await customerApi.removeFavourite(vendorId);
-      await load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not remove");
-    } finally {
-      setRemovingId(null);
-    }
-  }
 
   if (!isAuthenticated) {
     return (
@@ -102,16 +75,13 @@ export default function FavouritesScreen() {
       </View>
 
       <ScreenState
-        loading={loading}
+        loading={loading && items.length === 0}
         loadingShimmer={<ShimmerBusinessList />}
         error={error}
         empty={!loading && !error && items.length === 0}
         emptyMessage="No favourites yet — heart a business to save it"
         emptyIcon={Heart}
-        onRetry={() => {
-          setLoading(true);
-          void load();
-        }}
+        onRetry={() => void load(isAuthenticated)}
       >
         <FlatList
           data={items}
@@ -121,10 +91,7 @@ export default function FavouritesScreen() {
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={() => {
-                setRefreshing(true);
-                void load();
-              }}
+              onRefresh={() => void refresh(isAuthenticated)}
               tintColor="#2563EB"
             />
           }
@@ -132,7 +99,7 @@ export default function FavouritesScreen() {
             <SavedBusinessCard
               item={item}
               removing={removingId === item.vendor.id}
-              onRemove={() => void removeFavourite(item.vendor.id)}
+              onRemove={() => void removeFavourite(item.vendor.id, isAuthenticated)}
             />
           )}
         />
@@ -140,10 +107,7 @@ export default function FavouritesScreen() {
           page={page}
           totalPages={totalPages}
           total={total}
-          onPageChange={(next) => {
-            setLoading(true);
-            setPage(next);
-          }}
+          onPageChange={(next) => void setPage(next, isAuthenticated)}
         />
       </ScreenState>
     </View>
