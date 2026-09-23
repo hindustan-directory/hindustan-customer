@@ -172,7 +172,10 @@ export default function TicketDetailScreen() {
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-ink-50"
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      // Android: edge-to-edge is enabled, so windowSoftInputMode="adjustResize"
+      // no longer lifts content on its own — use "height" (same convention as
+      // KeyboardForm) so the reply bar rises above the keyboard.
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 88 : 0}
     >
       <ScreenState

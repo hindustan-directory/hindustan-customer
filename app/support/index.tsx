@@ -1,5 +1,5 @@
 import { FlashList } from "@shopify/flash-list";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { LifeBuoy, Plus } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { RefreshControl, Text, View } from "react-native";
@@ -98,9 +98,13 @@ export default function SupportScreen() {
     }
   }, [isAuthenticated, page]);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  // Refetch on focus so a ticket just raised in /support/new shows up as soon
+  // as we pop back here (this screen stays mounted underneath the push).
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load]),
+  );
 
   if (!isAuthenticated) {
     return (
