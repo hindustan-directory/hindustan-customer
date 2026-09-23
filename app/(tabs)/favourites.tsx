@@ -1,6 +1,6 @@
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { Heart } from "lucide-react-native";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { FlatList, RefreshControl, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SavedBusinessCard } from "../../components/customer/SavedBusinessCard";
@@ -44,9 +44,13 @@ export default function FavouritesScreen() {
     }
   }, [isAuthenticated, page]);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  // Bottom tab stays mounted, so refetch each time it regains focus — this is
+  // how a store just saved on the business detail screen shows up here.
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load]),
+  );
 
   const keyExtractor = useCallback((item: FavouriteRow) => item.vendor.id, []);
 
