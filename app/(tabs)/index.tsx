@@ -1,6 +1,6 @@
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { Bell, Building2, Search, Tag } from "lucide-react-native";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { FlashList } from "@shopify/flash-list";
 import {
   Pressable,
@@ -18,25 +18,30 @@ import {
 import { BusinessCard } from "../../components/BusinessCard";
 import { ShimmerHome } from "../../components/Shimmer";
 import { ScreenState } from "../../components/ui";
-import { ApiError } from "../../src/api/client";
-import { directoryApi, fetchCategories } from "../../src/api/endpoints";
-import type { BusinessCategory, VendorSearchResult } from "../../src/api/types";
+import type { VendorSearchResult } from "../../src/api/types";
 import { useAuth } from "../../src/auth/AuthProvider";
 import { useUnreadNotifications } from "../../src/hooks/useUnreadNotifications";
 import { timeGreeting } from "../../src/lib/datetime";
 import { floatingTabBarInset } from "../../src/navigation/chrome";
+import { useHomeStore } from "../../src/stores/homeStore";
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { count: unreadCount } = useUnreadNotifications();
   const [query, setQuery] = useState("");
-  const [categories, setCategories] = useState<BusinessCategory[]>([]);
-  const [featured, setFeatured] = useState<VendorSearchResult[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
+
+  // Module-level store: last-known data survives unmounts, so the screen paints
+  // instantly and only shimmers on the very first load (see useFocusEffect).
+  const categories = useHomeStore((s) => s.categories);
+  const featured = useHomeStore((s) => s.featured);
+  const loaded = useHomeStore((s) => s.loaded);
+  const loading = useHomeStore((s) => s.loading);
+  const refreshing = useHomeStore((s) => s.refreshing);
+  const error = useHomeStore((s) => s.error);
+  const load = useHomeStore((s) => s.load);
+  const refresh = useHomeStore((s) => s.refresh);
 
   const categoryOptions = useMemo<SelectOption[]>(
     () =>
@@ -48,35 +53,13 @@ export default function HomeScreen() {
     [categories],
   );
 
-  const load = useCallback(async () => {
-    setError(null);
-    try {
-      const [catsSettled, searchSettled] = await Promise.allSettled([
-        fetchCategories(),
-        directoryApi.search({ page: 1, pageSize: 10 }),
-      ]);
-      if (catsSettled.status === "fulfilled") {
-        setCategories(catsSettled.value.filter((c) => c.isActive));
-      } else {
-        setCategories([]);
-      }
-      if (searchSettled.status === "fulfilled") {
-        setFeatured(searchSettled.value.items);
-      } else {
-        const reason = searchSettled.reason;
-        throw reason instanceof Error ? reason : new Error("Failed to load directory");
-      }
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not load home");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  // First visit blocks on load(); later focuses revalidate in the background.
+  useFocusEffect(
+    useCallback(() => {
+      if (!loaded) void load();
+      else void refresh();
+    }, [loaded, load, refresh]),
+  );
 
   const onPressBusiness = useCallback((slug: string) => {
     router.push(`/business/${slug}`);
@@ -137,11 +120,10 @@ export default function HomeScreen() {
       </View>
 
       <ScreenState
-        loading={loading}
+        loading={loading && featured.length === 0}
         loadingShimmer={<ShimmerHome />}
-        error={error}
+        error={featured.length === 0 ? error : null}
         onRetry={() => {
-          setLoading(true);
           void load();
         }}
       >
@@ -154,8 +136,7 @@ export default function HomeScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => {
-                setRefreshing(true);
-                void load();
+                void refresh();
               }}
               tintColor="#2563EB"
             />
