@@ -2,8 +2,8 @@ import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { useLocalSearchParams } from "expo-router";
 import { Send } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Pressable, RefreshControl, Text, TextInput, View } from "react-native";
-import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import { Keyboard, Platform, Pressable, RefreshControl, Text, TextInput, View } from "react-native";
+import { useKeyboardState } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   TICKET_PRIORITY_LABELS,
@@ -96,6 +96,26 @@ export default function TicketDetailScreen() {
   const [error, setError] = useState<string | null>(null);
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
+  // Accurate IME height (incl. the suggestion strip) from keyboard-controller,
+  // with RN's own keyboard events as a fallback via Math.max so the reply bar
+  // can never be left fully behind the keyboard.
+  const imeHeight = useKeyboardState((state) => state.height);
+  const [rnKbHeight, setRnKbHeight] = useState(0);
+  useEffect(() => {
+    const show = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
+      (e) => setRnKbHeight(e.endCoordinates.height),
+    );
+    const hide = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
+      () => setRnKbHeight(0),
+    );
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+  const keyboardHeight = Math.max(imeHeight, rnKbHeight);
 
   const listRef = useRef<FlashListRef<TicketNote>>(null);
 
@@ -163,8 +183,7 @@ export default function TicketDetailScreen() {
   }
 
   return (
-    <View className="flex-1 bg-ink-50">
-      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+    <View className="flex-1 bg-ink-50" style={{ paddingBottom: keyboardHeight }}>
       <ScreenState
         loading={loading}
         loadingShimmer={<ShimmerDetail />}
@@ -204,7 +223,7 @@ export default function TicketDetailScreen() {
       {ticket ? (
         <View
           className="border-t border-ink-100 bg-white px-4 pt-2"
-          style={{ paddingBottom: Math.max(insets.bottom, 10) }}
+          style={{ paddingBottom: keyboardHeight > 0 ? 8 : Math.max(insets.bottom, 10) }}
         >
           {error && ticket ? (
             <Text className="mb-1 px-1 text-xs text-rose-600">{error}</Text>
@@ -234,7 +253,6 @@ export default function TicketDetailScreen() {
           </View>
         </View>
       ) : null}
-      </KeyboardAvoidingView>
     </View>
   );
 }
