@@ -6,6 +6,7 @@ import type { ErrorBoundaryProps } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { CircleAlert } from "lucide-react-native";
 import { Text, View } from "react-native";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AlertHost } from "../components/CustomAlert";
 import { HeaderBackButton } from "../components/HeaderBackButton";
 import { Button } from "../components/ui";
@@ -50,8 +51,9 @@ function pushed(title: string) {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <StatusBar style="dark" />
+    <KeyboardProvider>
+      <AuthProvider>
+        <StatusBar style="dark" />
       <Stack
         screenOptions={{
           headerShown: false,
@@ -79,6 +81,7 @@ export default function RootLayout() {
         <Stack.Screen name="notifications" options={pushed("Notifications")} />
       </Stack>
       <AlertHost />
-    </AuthProvider>
+      </AuthProvider>
+    </KeyboardProvider>
   );
 }
