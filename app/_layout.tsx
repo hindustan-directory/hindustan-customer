@@ -56,8 +56,8 @@ export default function RootLayout() {
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: "#F8FAFC" },
-          // Native stack: Android system / predictive back pops routes by default.
-          animation: "slide_from_right",
+          // No push animation — the slide felt laggy; swap screens instantly.
+          animation: "none",
           gestureEnabled: true,
         }}
       >
