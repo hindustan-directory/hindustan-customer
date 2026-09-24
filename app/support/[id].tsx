@@ -186,7 +186,12 @@ export default function TicketDetailScreen() {
   }
 
   return (
-    <View className="flex-1 bg-ink-50" style={{ paddingBottom: keyboardHeight }}>
+    <View
+      className="flex-1 bg-ink-50"
+      // Edge-to-edge: the view extends behind the gesture bar but the keyboard
+      // height doesn't count that region, so add insets.bottom back to the lift.
+      style={{ paddingBottom: keyboardHeight > 0 ? keyboardHeight + insets.bottom : 0 }}
+    >
       <ScreenState
         loading={loading}
         loadingShimmer={<ShimmerDetail />}
