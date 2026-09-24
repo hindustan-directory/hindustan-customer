@@ -3,7 +3,7 @@ import { useLocalSearchParams } from "expo-router";
 import { Send } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  KeyboardAvoidingView,
+  Keyboard,
   Platform,
   Pressable,
   RefreshControl,
@@ -103,6 +103,7 @@ export default function TicketDetailScreen() {
   const [error, setError] = useState<string | null>(null);
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const listRef = useRef<FlashListRef<TicketNote>>(null);
 
@@ -112,6 +113,21 @@ export default function TicketDetailScreen() {
     mounted.current = true;
     return () => {
       mounted.current = false;
+    };
+  }, []);
+
+  // With edge-to-edge on Android, adjustResize + KeyboardAvoidingView don't lift
+  // content — track the keyboard height and pad the screen up by it ourselves.
+  useEffect(() => {
+    const showEvt = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvt = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showSub = Keyboard.addListener(showEvt, (e) =>
+      setKeyboardHeight(e.endCoordinates.height),
+    );
+    const hideSub = Keyboard.addListener(hideEvt, () => setKeyboardHeight(0));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
     };
   }, []);
 
@@ -170,14 +186,7 @@ export default function TicketDetailScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      className="flex-1 bg-ink-50"
-      // Android: edge-to-edge is enabled, so windowSoftInputMode="adjustResize"
-      // no longer lifts content on its own — use "height" (same convention as
-      // KeyboardForm) so the reply bar rises above the keyboard.
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 88 : 0}
-    >
+    <View className="flex-1 bg-ink-50" style={{ paddingBottom: keyboardHeight }}>
       <ScreenState
         loading={loading}
         loadingShimmer={<ShimmerDetail />}
@@ -217,7 +226,7 @@ export default function TicketDetailScreen() {
       {ticket ? (
         <View
           className="border-t border-ink-100 bg-white px-4 pt-2"
-          style={{ paddingBottom: Math.max(insets.bottom, 10) }}
+          style={{ paddingBottom: keyboardHeight > 0 ? 8 : Math.max(insets.bottom, 10) }}
         >
           {error && ticket ? (
             <Text className="mb-1 px-1 text-xs text-rose-600">{error}</Text>
@@ -247,6 +256,6 @@ export default function TicketDetailScreen() {
           </View>
         </View>
       ) : null}
-    </KeyboardAvoidingView>
+    </View>
   );
 }
